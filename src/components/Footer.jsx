@@ -51,7 +51,7 @@ export default function Footer() {
         </div>
 
         <div className="footer-bottom">
-          <p>&copy; {new Date().getFullYear()} QuickBite. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} QuickBite. All rights reserved. Made by Aarohi &amp; Rushikesh</p>
         </div>
       </div>
     </footer>
