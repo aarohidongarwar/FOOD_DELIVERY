@@ -228,8 +228,8 @@
 /* Restaurants Grid */
 .restaurants-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 32px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
 }
 
 /* App Promo */
@@ -298,6 +298,10 @@
     text-align: center;
   }
   
+  .hero-image {
+    max-width: 100%;
+  }
+
   .hero-search-box {
     margin: 0 auto;
   }
@@ -317,9 +321,47 @@
   }
 }
 
+@media (max-width: 768px) {
+  .home-page {
+    gap: 40px;
+    padding-bottom: 40px;
+  }
+
+  .hero-section {
+    padding: 40px 0;
+    border-radius: 0 0 24px 24px;
+  }
+
+  .hero-content h1 {
+    font-size: 2.25rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.063rem;
+  }
+
+  .mind-card {
+    min-width: 110px;
+  }
+
+  .mind-icon {
+    width: 110px;
+    height: 110px;
+  }
+
+  .restaurants-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .promo-content h2 {
+    font-size: 2rem;
+  }
+}
+
 @media (max-width: 640px) {
   .hero-content h1 {
-    font-size: 2.5rem;
+    font-size: 2rem;
   }
   
   .hero-search-box {
@@ -341,5 +383,38 @@
   
   .btn-search {
     width: 100%;
+  }
+
+  .mind-carousel {
+    gap: 24px;
+  }
+
+  .mind-card {
+    min-width: 90px;
+  }
+
+  .mind-icon {
+    width: 90px;
+    height: 90px;
+  }
+
+  .cuisine-icon {
+    width: 64px;
+    height: 64px;
+    font-size: 1.5rem;
+  }
+
+  .cuisine-card {
+    min-width: 80px;
+  }
+
+  .restaurants-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 }

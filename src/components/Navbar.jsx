@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, User, LogOut, Search, MapPin, Menu, X, ChevronDown, Package, LayoutDashboard, Truck, ArrowUpRight } from 'lucide-react';
+import { ShoppingCart, User, LogOut, Search, MapPin, Menu, X, ChevronDown, Package, LayoutDashboard, Truck } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import useCartStore from '../stores/cartStore';
 import './Navbar.css';
@@ -29,6 +29,12 @@ export default function Navbar({ onCartClick }) {
     setShowDropdown(false);
   }, [location]);
 
+  // Lock body scroll when mobile menu open
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
+
   useEffect(() => {
     const handleClick = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -50,6 +56,7 @@ export default function Navbar({ onCartClick }) {
   const handleLogout = () => {
     logout();
     navigate('/');
+    setMobileOpen(false);
   };
 
   if (['/register-restaurant', '/register-grocery'].includes(location.pathname)) {
@@ -71,7 +78,7 @@ export default function Navbar({ onCartClick }) {
             <Search size={18} className="search-icon" />
             <input
               type="text"
-              placeholder="Search for restaurants or dishes..."
+              placeholder="Search restaurants or dishes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               id="navbar-search-input"
@@ -79,7 +86,7 @@ export default function Navbar({ onCartClick }) {
           </form>
         )}
 
-        {/* Right Actions */}
+        {/* ── Desktop Right Actions ── */}
         <div className="navbar-actions">
           {isLandingPage ? (
             <div className="lp-nav-actions">
@@ -119,8 +126,8 @@ export default function Navbar({ onCartClick }) {
               </Link>
               {user?.role === 'admin' && <Link to="/admin" className="nav-link"><LayoutDashboard size={18} /><span>Dashboard</span></Link>}
               {user?.role === 'driver' && <Link to="/driver" className="nav-link"><Truck size={18} /><span>Deliveries</span></Link>}
-              <button className="nav-cart-btn" onClick={onCartClick} id="cart-button">
-                <ShoppingCart size={20} />
+              <button className="nav-cart-btn" onClick={onCartClick} id="cart-button" aria-label="Open cart">
+                <ShoppingCart size={22} />
                 {itemCount > 0 && <span className="cart-badge">{itemCount}</span>}
               </button>
               {user ? (
@@ -146,22 +153,69 @@ export default function Navbar({ onCartClick }) {
           )}
         </div>
 
-        {/* Mobile Toggle */}
+        {/* ── Mobile Right Actions ── */}
         <div className="navbar-mobile-actions">
-          <button className="mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)}>
+          {/* Cart icon on mobile (non-landing only) */}
+          {!isLandingPage && (
+            <button className="mobile-cart-btn nav-cart-btn" onClick={onCartClick} aria-label="Open cart">
+              <ShoppingCart size={22} />
+              {itemCount > 0 && <span className="cart-badge">{itemCount}</span>}
+            </button>
+          )}
+          {/* Landing: show Sign In link on mobile */}
+          {isLandingPage && !user && location.pathname === '/' && (
+            <Link to="/login" className="btn btn-dark lp-nav-btn" style={{ fontSize: '0.85rem', padding: '8px 16px' }}>
+              Sign in
+            </Link>
+          )}
+          {/* Hamburger */}
+          <button
+            className="mobile-toggle"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+          >
             {mobileOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* ── Mobile Menu Dropdown ── */}
       {mobileOpen && (
         <div className="mobile-menu animate-fade-in">
-          <Link to="/restaurants" className="mobile-link">Restaurants</Link>
+          {user && (
+            <div className="mobile-user-info">
+              <div className="nav-avatar">{user.name?.charAt(0).toUpperCase()}</div>
+              <span className="mobile-user-name">{user.name}</span>
+            </div>
+          )}
+
+          {!isLandingPage && (
+            <Link to="/restaurants" className="mobile-link">
+              <MapPin size={18} /> Restaurants
+            </Link>
+          )}
+          {isLandingPage && location.pathname === '/' && (
+            <Link to="/onboarding" className="mobile-link">
+              🤝 Partner with us
+            </Link>
+          )}
+
           {user ? (
-            <button className="mobile-link mobile-logout" onClick={handleLogout}>Logout</button>
+            <>
+              <Link to="/profile" className="mobile-link"><User size={18} /> Profile</Link>
+              <Link to="/orders" className="mobile-link"><Package size={18} /> My Orders</Link>
+              {user?.role === 'admin' && <Link to="/admin" className="mobile-link"><LayoutDashboard size={18} /> Admin Dashboard</Link>}
+              {user?.role === 'driver' && <Link to="/driver" className="mobile-link"><Truck size={18} /> Deliveries</Link>}
+              <div className="mobile-divider" />
+              <button className="mobile-link mobile-logout" onClick={handleLogout}>
+                <LogOut size={18} /> Logout
+              </button>
+            </>
           ) : (
-            <Link to="/login" className="mobile-link mobile-login">Login / Sign Up</Link>
+            <>
+              <div className="mobile-divider" />
+              <Link to="/login" className="mobile-link mobile-login">Login / Sign Up</Link>
+            </>
           )}
         </div>
       )}

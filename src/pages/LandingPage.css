@@ -2,7 +2,18 @@
   position: relative;
   overflow-x: hidden;
   background: #FFFFFF;
+  /* Pull back up since main-content adds navbar padding;
+     landing page uses a transparent overlay navbar */
+  margin-top: calc(-1 * var(--nav-height));
 }
+
+/* ── Common Utilities ── */
+.text-orange { color: #FF9F0D; }
+.text-green { color: #10B981; }
+.text-blue { color: #3B82F6; }
+.bg-orange-light { background: rgba(255, 159, 13, 0.1); }
+.bg-green-light { background: rgba(16, 185, 129, 0.1); }
+.bg-blue-light { background: rgba(59, 130, 246, 0.1); }
 
 /* ══════════════════════════════════════════════
    New Split-Screen UI Layout
@@ -28,7 +39,8 @@
   align-items: center;
   position: relative;
   z-index: 1;
-  padding-top: 80px;
+  /* Top padding = navbar height to clear the transparent nav */
+  padding-top: var(--nav-height);
 }
 
 .lp-hero-inner {
@@ -53,16 +65,17 @@
   font-family: var(--font-display);
 }
 
-.lp-title span {
-  color: #1A1A1A; /* In the reference, the whole title is dark */
-}
-
 .lp-subtitle {
   font-size: 1.125rem;
   color: #666;
   margin-bottom: 48px;
   max-width: 480px;
   line-height: 1.8;
+}
+
+.lp-hero-actions {
+  display: flex;
+  gap: 20px;
 }
 
 /* Orange Pill CTA Button */
@@ -84,6 +97,13 @@
 .lp-cta:hover {
   transform: translateY(-3px);
   box-shadow: 0 15px 30px rgba(255, 159, 13, 0.5) !important;
+}
+
+.lp-cta-secondary {
+  padding: 16px 40px !important;
+  border-radius: var(--radius-full) !important;
+  font-weight: 700 !important;
+  border: 1.5px solid #DDD !important;
 }
 
 /* Hero Decoration Images */
@@ -121,7 +141,231 @@
   z-index: 10;
 }
 
-/* Roles Section (Consistent style) */
+/* ══════════════════════════════════════════════
+   How It Works Section
+   ══════════════════════════════════════════════ */
+.lp-how-it-works {
+  padding: 120px 0;
+  background: #FAFAFA;
+}
+
+.lp-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 60px;
+  margin-top: 60px;
+}
+
+.lp-step-item {
+  text-align: center;
+  position: relative;
+}
+
+.lp-step-icon-wrap {
+  width: 100px;
+  height: 100px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 30px;
+  color: #FF9F0D;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  position: relative;
+}
+
+.lp-step-number {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 32px;
+  height: 32px;
+  background: #1A1A1A;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.lp-step-item h3 {
+  font-size: 1.5rem;
+  margin-bottom: 16px;
+}
+
+.lp-step-item p {
+  color: #666;
+  line-height: 1.6;
+}
+
+/* ══════════════════════════════════════════════
+   Features Section
+   ══════════════════════════════════════════════ */
+.lp-features {
+  padding: 120px 0;
+  background: white;
+}
+
+.lp-features-layout {
+  display: flex;
+  align-items: center;
+  gap: 100px;
+}
+
+.lp-features-content {
+  flex: 1;
+}
+
+.lp-badge {
+  display: inline-block;
+  padding: 8px 20px;
+  background: rgba(255, 159, 13, 0.1);
+  color: #FF9F0D;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-size: 0.875rem;
+  margin-bottom: 24px;
+}
+
+.lp-features-content h2 {
+  font-size: 3rem;
+  margin-bottom: 24px;
+  line-height: 1.2;
+}
+
+.lp-features-content p {
+  color: #666;
+  font-size: 1.125rem;
+  margin-bottom: 40px;
+}
+
+.lp-features-list {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.lp-features-list li {
+  display: flex;
+  gap: 20px;
+}
+
+.lp-feat-icon {
+  width: 48px;
+  height: 48px;
+  background: #1A1A1A;
+  color: white;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lp-features-list h4 {
+  font-size: 1.125rem;
+  margin-bottom: 6px;
+}
+
+.lp-features-list p {
+  font-size: 0.938rem;
+  margin-bottom: 0;
+}
+
+.lp-features-visual {
+  flex: 1;
+  position: relative;
+}
+
+.lp-rider-img {
+  width: 100%;
+  border-radius: 40px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.1);
+}
+
+.lp-visual-card {
+  position: absolute;
+  background: white;
+  padding: 20px 24px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  font-weight: 700;
+  z-index: 5;
+}
+
+.lp-card-1 {
+  top: 10%;
+  left: -40px;
+}
+
+.lp-card-2 {
+  bottom: 10%;
+  right: -20px;
+}
+
+/* ══════════════════════════════════════════════
+   App Promo Section
+   ══════════════════════════════════════════════ */
+.lp-app-promo {
+  padding: 120px 0 0;
+  background: #FF9F0D;
+  overflow: hidden;
+}
+
+.lp-app-inner {
+  display: flex;
+  align-items: center;
+  gap: 80px;
+}
+
+.lp-app-content {
+  flex: 1;
+  color: white;
+}
+
+.lp-app-content h2 {
+  font-size: 3rem;
+  color: white;
+  margin-bottom: 24px;
+}
+
+.lp-app-content p {
+  font-size: 1.25rem;
+  margin-bottom: 40px;
+  opacity: 0.9;
+}
+
+.lp-app-badges {
+  display: flex;
+  gap: 20px;
+}
+
+.lp-app-badges img {
+  height: 50px;
+  cursor: pointer;
+}
+
+.lp-app-mockup {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.lp-app-mockup img {
+  width: 100%;
+  max-width: 450px;
+  margin-bottom: -100px;
+}
+
+/* ══════════════════════════════════════════════
+   Roles Section (Updated)
+   ══════════════════════════════════════════════ */
 .lp-roles-section {
   padding: 120px 0;
   background: white;
@@ -191,38 +435,143 @@
   line-height: 1.6;
 }
 
+.lp-cta-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #FF9F0D;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* ══════════════════════════════════════════════
+   Final CTA Section
+   ══════════════════════════════════════════════ */
+.lp-final-cta {
+  padding: 120px 0;
+  background: white;
+}
+
+.lp-cta-box {
+  background: #1A1A1A;
+  border-radius: 40px;
+  padding: 80px;
+  text-align: center;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.lp-cta-box h2 {
+  color: white;
+  font-size: 3.5rem;
+  margin-bottom: 24px;
+}
+
+.lp-cta-box p {
+  font-size: 1.25rem;
+  margin-bottom: 48px;
+  opacity: 0.8;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.lp-final-btn {
+  background: #FF9F0D !important;
+  color: white !important;
+  padding: 20px 60px !important;
+  border-radius: var(--radius-full) !important;
+  font-size: 1.25rem !important;
+  border: none !important;
+}
+
+/* ══════════════════════════════════════════════
+   Responsive (Updated)
+   ══════════════════════════════════════════════ */
+
 @media (max-width: 1200px) {
-  .lp-title {
-    font-size: 4rem;
-  }
-  .lp-bg-orange-shape {
-    width: 65vw;
-  }
+  .lp-title { font-size: 4rem; }
+  .lp-bg-orange-shape { width: 65vw; }
+  .lp-features-layout { gap: 60px; }
 }
 
 @media (max-width: 992px) {
+  .lp-hero {
+    padding-top: 64px;
+    min-height: auto;
+    padding-bottom: 60px;
+  }
   .lp-hero-inner {
     flex-direction: column;
     text-align: center;
+    gap: 40px;
   }
   .lp-hero-content {
     text-align: center;
     max-width: 100%;
-    margin-bottom: 60px;
   }
-  .lp-title {
-    font-size: 3.5rem;
-  }
-  .lp-subtitle {
-    margin: 0 auto 40px;
-  }
+  .lp-subtitle { margin: 0 auto 40px; }
+  .lp-title { font-size: 3.5rem; }
+  .lp-hero-actions { justify-content: center; }
+  
   .lp-bg-orange-shape {
     width: 100vw;
-    height: 60vh;
-    top: 50%;
-    border-radius: 50% 50% 0 0;
+    height: 55vh;
+    top: auto;
+    bottom: 0;
+    right: -5%;
+    border-radius: 60% 60% 0 0;
   }
-  .lp-hero-dish {
+  .lp-hero-image-container {
+    flex: unset;
     width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
   }
+  
+  .lp-steps-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .lp-features-layout {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .lp-features-visual {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .lp-app-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .lp-app-badges { justify-content: center; }
+
+  .lp-cta-box { padding: 60px 30px; }
+  .lp-cta-box h2 { font-size: 2.5rem; }
+}
+
+@media (max-width: 640px) {
+  .lp-title { font-size: 2.75rem; }
+  .lp-subtitle { font-size: 1rem; }
+  .lp-hero-actions { flex-direction: column; gap: 12px; }
+  .lp-cta { width: 100%; justify-content: center !important; }
+  .lp-cta-secondary { width: 100%; }
+  
+  .lp-features-content h2 { font-size: 2.25rem; }
+  .lp-app-content h2 { font-size: 2.25rem; }
+  .lp-app-mockup img { margin-bottom: -60px; }
+}
+
+@media (max-width: 480px) {
+  .lp-title { font-size: 2.25rem; }
+  .lp-bg-orange-shape { display: none; }
+  .lp-hero { background: linear-gradient(160deg, #fff 50%, #FFF3E0 100%); }
+  .lp-hero-decorations { display: none; }
 }

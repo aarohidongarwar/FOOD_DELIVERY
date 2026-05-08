@@ -252,6 +252,29 @@
   }
 }
 
+@media (max-width: 640px) {
+  .cp-section {
+    padding: 20px 16px;
+  }
+
+  .cp-summary-card {
+    padding: 20px 16px;
+  }
+
+  .cp-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .order-success-card {
+    padding: 32px 24px;
+  }
+
+  .success-icon-wrap {
+    width: 96px;
+    height: 96px;
+  }
+}
+
 /* Order Success Animation */
 .order-success-overlay {
   position: fixed;

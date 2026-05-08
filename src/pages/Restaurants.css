@@ -160,3 +160,34 @@
     margin-bottom: 0;
   }
 }
+
+@media (max-width: 640px) {
+  .restaurants-page {
+    padding-top: 24px;
+  }
+
+  .page-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .filters-sidebar {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .restaurants-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .filters-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .restaurants-grid {
+    grid-template-columns: 1fr;
+  }
+}
