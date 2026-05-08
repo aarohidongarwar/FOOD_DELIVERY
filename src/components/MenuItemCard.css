@@ -1,0 +1,144 @@
+.menu-item-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--divider);
+}
+
+.menu-item-card:last-child {
+  border-bottom: none;
+}
+
+.mic-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mic-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mic-bestseller {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--secondary);
+  background: rgba(255, 152, 0, 0.1);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.mic-name {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.mic-price {
+  font-size: 0.938rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.mic-desc {
+  font-size: 0.813rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mic-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.mic-image-wrap {
+  width: 118px;
+  height: 96px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--border-light);
+}
+
+.mic-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mic-actions {
+  margin-top: -14px;
+}
+
+.mic-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 24px;
+  background: var(--bg-card);
+  color: var(--accent-green);
+  border: 1.5px solid var(--accent-green);
+  border-radius: var(--radius-sm);
+  font-size: 0.813rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.mic-add-btn:hover {
+  background: var(--accent-green);
+  color: white;
+}
+
+.mic-qty-control {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--accent-green);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.mic-qty-btn {
+  width: 32px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: background var(--transition-fast);
+}
+
+.mic-qty-btn:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.mic-qty {
+  min-width: 24px;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+}
+
+@media (max-width: 480px) {
+  .mic-image-wrap {
+    width: 90px;
+    height: 78px;
+  }
+}

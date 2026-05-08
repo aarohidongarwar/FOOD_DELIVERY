@@ -1,0 +1,602 @@
+.grocery-reg-page {
+  padding-top: 40px;
+  padding-bottom: 60px;
+  min-height: 100vh;
+  background-color: #f9fafb;
+}
+
+.grocery-reg-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Header */
+.grocery-reg-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 30px;
+  position: relative;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: #1a1a1a;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.header-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ff4d00;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* Hero Section */
+.reg-hero {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.reg-hero h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+
+.reg-hero p {
+  font-size: 1.1rem;
+  color: #6b7280;
+}
+
+/* Stepper */
+.grocery-stepper {
+  display: flex;
+  justify-content: space-between;
+  max-width: 800px;
+  margin: 0 auto 50px;
+  position: relative;
+}
+
+.grocery-stepper::before {
+  content: '';
+  position: absolute;
+  top: 25px;
+  left: 50px;
+  right: 50px;
+  height: 2px;
+  background: #f3f4f6;
+  z-index: 1;
+}
+
+.grocery-step-item {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  cursor: pointer;
+}
+
+.grocery-step-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.grocery-step-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #9ca3af;
+  transition: all 0.3s ease;
+}
+
+.grocery-step-item.active .grocery-step-icon {
+  border-color: #ff4d00;
+  color: #ff4d00;
+  box-shadow: 0 0 0 4px rgba(255, 77, 0, 0.1);
+  transform: scale(1.1);
+}
+
+.grocery-step-item.active .grocery-step-label {
+  color: #ff4d00;
+}
+
+.grocery-step-item.completed .grocery-step-icon {
+  background: #ff4d00;
+  border-color: #ff4d00;
+  color: white;
+}
+
+.grocery-step-item.completed .grocery-step-label {
+  color: #1a1a1a;
+}
+
+/* Form Card */
+.grocery-reg-card {
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.grocery-step-title {
+  margin-bottom: 30px;
+}
+
+.grocery-step-title h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.grocery-step-title p {
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+.grocery-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.grocery-form-group {
+  margin-bottom: 20px;
+}
+
+.grocery-form-group.full-width {
+  grid-column: span 2;
+}
+
+.grocery-form-group label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+}
+
+.grocery-form-group label span {
+  color: #ff4d4f;
+  margin-left: 2px;
+}
+
+.grocery-form-control {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background-color: white;
+}
+
+.grocery-form-control:focus {
+  outline: none;
+  border-color: #ff4d00;
+  box-shadow: 0 0 0 3px rgba(255, 77, 0, 0.1);
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle:hover {
+  color: #6b7280;
+}
+
+/* Info Box */
+.grocery-info-box {
+  background-color: #eff6ff;
+  border-left: 4px solid #3b82f6;
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: #1e40af;
+  font-size: 0.9rem;
+  margin-bottom: 24px;
+}
+
+.grocery-info-box.grocery-info-sub {
+  background-color: #f9fafb;
+  border-left-color: #e5e7eb;
+  color: #6b7280;
+}
+
+/* Upload Section */
+.upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.upload-item label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.upload-placeholder {
+  border: 2px dashed #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+}
+
+.upload-placeholder:hover {
+  border-color: #ff4d00;
+  background-color: #fffaf0;
+  color: #ff4d00;
+}
+
+/* Footer */
+.grocery-reg-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.grocery-btn-back {
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  color: #4b5563;
+  background: white;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.grocery-btn-back:hover {
+  background: #f9fafb;
+}
+
+.grocery-btn-next {
+  padding: 10px 32px;
+  border-radius: 8px;
+  font-weight: 700;
+  color: white;
+  background: #ff4d00;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.grocery-btn-next:hover {
+  background: #e64500;
+  box-shadow: 0 4px 12px rgba(255, 77, 0, 0.2);
+}
+
+.grocery-footer-link {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.grocery-footer-link a {
+  color: #ff4d00;
+  font-weight: 600;
+  text-decoration: none;
+  margin-left: 4px;
+}
+
+.grocery-footer-link a:hover {
+  text-decoration: underline;
+}
+
+/* Progress Bar */
+.grocery-progress-container {
+  margin-top: 32px;
+}
+
+.grocery-progress-bar {
+  height: 6px;
+  background-color: #f3f4f6;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.grocery-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff4d00, #ff8c00);
+  transition: width 0.4s ease-out;
+}
+
+.grocery-step-indicator {
+  text-align: right;
+  color: #6b7280;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* ============================
+   SUCCESS CARD STYLES
+   ============================ */
+.grocery-success-card {
+  background: white;
+  border-radius: 24px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.grocery-success-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 30px;
+  color: #ff4d00;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.grocery-success-icon-wrapper {
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.grocery-success-icon-inner {
+  width: 80px;
+  height: 80px;
+  background: #fff5f0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff4d00;
+}
+
+.grocery-success-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin-bottom: 12px;
+}
+
+.grocery-success-desc {
+  color: #6b7280;
+  line-height: 1.6;
+  margin-bottom: 32px;
+  font-size: 1rem;
+}
+
+.grocery-success-desc strong {
+  color: #1a1a1a;
+}
+
+/* Status Stepper in Success Card */
+.grocery-status-stepper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 40px;
+  padding: 0 20px;
+}
+
+.grocery-status-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.grocery-status-step span {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.grocery-status-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.grocery-status-circle.completed {
+  background: #10b981;
+  color: white;
+}
+
+.grocery-status-circle.current {
+  background: #ff4d00;
+  color: white;
+}
+
+.grocery-status-line {
+  flex: 0.5;
+  height: 2px;
+  background: #f3f4f6;
+  margin-top: 20px;
+}
+
+.grocery-status-line.active {
+  background: #ffbc99;
+}
+
+.grocery-status-step.active-current span {
+  color: #1a1a1a;
+}
+
+/* Summary Box */
+.grocery-summary-box {
+  background: #f9fafb;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 30px;
+}
+
+.grocery-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.grocery-summary-row:last-child {
+  border-bottom: none;
+}
+
+.grocery-summary-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.grocery-summary-value {
+  color: #1a1a1a;
+  font-weight: 700;
+}
+
+.grocery-summary-badge {
+  background: #fff9db;
+  color: #f59f00;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.grocery-help-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin-bottom: 30px;
+}
+
+.grocery-help-link a {
+  color: #1a1a1a;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.grocery-btn-signout {
+  width: 100%;
+  padding: 14px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  color: #1a1a1a;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.grocery-btn-signout:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.step-placeholder {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.placeholder-icon {
+  margin-top: 24px;
+  color: #e5e7eb;
+}
+
+@media (max-width: 768px) {
+  .grocery-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .grocery-form-group.full-width {
+    grid-column: span 1;
+  }
+  .header-title {
+    display: none;
+  }
+  .grocery-stepper {
+    overflow-x: auto;
+    gap: 8px;
+  }
+  .grocery-step-label {
+    display: none;
+  }
+  .grocery-reg-card {
+    padding: 24px;
+  }
+  .grocery-success-card {
+    padding: 24px;
+  }
+}

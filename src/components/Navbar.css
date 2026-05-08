@@ -1,0 +1,194 @@
+/* ══════════════════════════════════════════════
+   Navbar Re-Style (Matching Reference UI)
+   ══════════════════════════════════════════════ */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: transparent;
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+.navbar-scrolled {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  height: 72px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+
+.navbar-inner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.logo-icon {
+  font-size: 1.75rem;
+}
+
+.logo-text {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #1A1A1A;
+  font-family: var(--font-display);
+}
+
+.logo-accent {
+  color: #FF9F0D;
+}
+
+/* Landing Page Specific Navbar Styles */
+.navbar-landing .lp-nav-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 32px !important;
+  margin-left: auto !important;
+}
+
+.navbar-landing .lp-nav-link {
+  color: #1A1A1A !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  text-decoration: none !important;
+  transition: color 0.2s ease !important;
+}
+
+.navbar-landing .lp-nav-link:hover {
+  color: #FF9F0D !important;
+}
+
+/* Black Pill Button for "Sign in" */
+.navbar-landing .btn-dark.lp-nav-btn {
+  background: #000 !important;
+  color: white !important;
+  padding: 12px 32px !important;
+  border-radius: var(--radius-full) !important;
+  font-weight: 700 !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+  transition: all 0.3s ease !important;
+}
+
+.navbar-landing .btn-dark.lp-nav-btn:hover {
+  background: #222 !important;
+  transform: translateY(-2px);
+}
+
+/* Hide mobile toggle on landing page */
+.navbar-landing .navbar-mobile-actions {
+  display: none !important;
+}
+
+/* Non-Landing Page Styles (Search, Cart, etc.) */
+.navbar-search {
+  flex: 1;
+  max-width: 450px;
+  position: relative;
+}
+
+.navbar-search input {
+  width: 100%;
+  padding: 10px 16px 10px 44px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: #F5F5F5;
+  outline: none;
+}
+
+.search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+}
+
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.nav-link {
+  color: #1A1A1A;
+  text-decoration: none;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-cart-btn {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #1A1A1A;
+}
+
+.cart-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #FF9F0D;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+}
+
+/* Profile Dropdown */
+.nav-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 1px solid #EEE;
+  padding: 4px 12px 4px 4px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+
+.nav-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #FF9F0D;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+/* Mobile Toggle (Global) */
+.mobile-toggle {
+  display: flex;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #1A1A1A;
+}
+
+@media (max-width: 992px) {
+  .navbar-search {
+    display: none !important;
+  }
+}
