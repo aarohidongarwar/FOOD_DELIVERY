@@ -90,16 +90,8 @@ export default function Navbar({ onCartClick }) {
         <div className="navbar-actions">
           {isLandingPage ? (
             <div className="lp-nav-actions">
-              {location.pathname === '/' && (
-                <Link to="/onboarding" className="nav-link lp-nav-link">
-                  Partner with us
-                </Link>
-              )}
-              {!user && location.pathname === '/' && (
-                <Link to="/login" className="btn btn-dark lp-nav-btn" id="login-nav-btn">
-                  Sign in
-                </Link>
-              )}
+              {/* Partner with us link removed as requested */}
+              {/* Sign in button removed as requested */}
               {user && (
                 <div className="nav-profile" ref={dropdownRef}>
                   <button className="nav-profile-btn" onClick={() => setShowDropdown(!showDropdown)}>
@@ -163,11 +155,7 @@ export default function Navbar({ onCartClick }) {
             </button>
           )}
           {/* Landing: show Sign In link on mobile */}
-          {isLandingPage && !user && location.pathname === '/' && (
-            <Link to="/login" className="btn btn-dark lp-nav-btn" style={{ fontSize: '0.85rem', padding: '8px 16px' }}>
-              Sign in
-            </Link>
-          )}
+          {/* Sign in removed on mobile as requested */}
           {/* Hamburger */}
           <button
             className="mobile-toggle"
@@ -194,11 +182,7 @@ export default function Navbar({ onCartClick }) {
               <MapPin size={18} /> Restaurants
             </Link>
           )}
-          {isLandingPage && location.pathname === '/' && (
-            <Link to="/onboarding" className="mobile-link">
-              🤝 Partner with us
-            </Link>
-          )}
+          {/* Partner link removed on mobile as requested */}
 
           {user ? (
             <>
