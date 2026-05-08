@@ -106,25 +106,7 @@
   border: 1.5px solid #DDD !important;
 }
 
-/* Hero Decoration Images */
-.lp-hero-decorations {
-  position: absolute;
-  bottom: -150px;
-  left: -50px;
-  display: flex;
-  gap: 20px;
-  pointer-events: none;
-}
 
-.lp-decor {
-  width: 60px;
-  height: 60px;
-  opacity: 0.8;
-  filter: blur(1px);
-}
-
-.lp-decor-1 { transform: rotate(15deg); }
-.lp-decor-2 { transform: rotate(-20deg) translateY(30px); width: 80px; height: 80px; }
 
 /* The Overlapping Food Dish */
 .lp-hero-image-container {
@@ -146,14 +128,92 @@
    ══════════════════════════════════════════════ */
 .lp-how-it-works {
   padding: 120px 0;
-  background: #FAFAFA;
+  background: #FFFFFF;
+}
+
+.lp-section-header {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 80px;
+}
+
+/* Split layout: steps left, image right */
+.lp-hiw-layout {
+  display: flex;
+  align-items: center;
+  gap: 80px;
+}
+
+.lp-hiw-content {
+  flex: 1.1;
+}
+
+.lp-hiw-header {
+  margin-bottom: 60px;
+}
+
+.lp-hiw-header h2 {
+  font-size: 3rem;
+  color: #1A1A1A;
+  font-weight: 800;
+  margin-bottom: 16px;
+}
+
+.lp-hiw-header p {
+  color: #666;
+  font-size: 1.25rem;
 }
 
 .lp-steps-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 60px;
-  margin-top: 60px;
+  grid-template-columns: 1fr;
+  gap: 40px;
+}
+
+/* Override step items to left-align in the new layout */
+.lp-hiw-content .lp-step-item {
+  text-align: left;
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.lp-hiw-content .lp-step-icon-wrap {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* Right side: image with orange blob */
+.lp-hiw-image-container {
+  flex: 1;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 500px;
+}
+
+.lp-hiw-orange-blob {
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  background: #FF9F0D;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+}
+
+.lp-hiw-dish {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 460px;
+  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.15));
 }
 
 .lp-step-item {
@@ -294,21 +354,6 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-  font-weight: 700;
-  z-index: 5;
-}
-
-.lp-card-1 {
-  top: 10%;
-  left: -40px;
-}
-
-.lp-card-2 {
-  bottom: 10%;
-  right: -20px;
-}
-
 /* ══════════════════════════════════════════════
    App Promo Section
    ══════════════════════════════════════════════ */
@@ -341,16 +386,6 @@
   opacity: 0.9;
 }
 
-.lp-app-badges {
-  display: flex;
-  gap: 20px;
-}
-
-.lp-app-badges img {
-  height: 50px;
-  cursor: pointer;
-}
-
 .lp-app-mockup {
   flex: 1;
   display: flex;
@@ -374,6 +409,10 @@
 }
 
 .lp-section-header {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
   margin-bottom: 80px;
 }
@@ -496,7 +535,7 @@
   .lp-features-layout { gap: 60px; }
 }
 
-@media (max-width: 992px) {
+
   .lp-hero {
     padding-top: 64px;
     min-height: auto;
@@ -530,6 +569,23 @@
     margin: 0 auto;
   }
   
+  .lp-hiw-layout {
+    flex-direction: column;
+    gap: 40px;
+  }
+  .lp-hiw-header {
+    text-align: center;
+  }
+  .lp-hiw-image-container {
+    min-height: 350px;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  .lp-hiw-orange-blob {
+    width: 300px;
+    height: 300px;
+  }
   .lp-steps-grid {
     grid-template-columns: 1fr;
     gap: 40px;
@@ -573,5 +629,5 @@
   .lp-title { font-size: 2.25rem; }
   .lp-bg-orange-shape { display: none; }
   .lp-hero { background: linear-gradient(160deg, #fff 50%, #FFF3E0 100%); }
-  .lp-hero-decorations { display: none; }
+   display: none; }
 }

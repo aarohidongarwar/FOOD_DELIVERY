@@ -47,11 +47,7 @@ export default function LandingPage() {
               or looking to deliver, we have a place for you.
             </p>
             
-            {/* Scattered Ingredients Decoration */}
-            <div className="lp-hero-decorations">
-              <img src="https://cdn-icons-png.flaticon.com/512/2079/2079237.png" alt="chickpeas" className="lp-decor lp-decor-1" />
-              <img src="https://cdn-icons-png.flaticon.com/512/2515/2515220.png" alt="jalapeno" className="lp-decor lp-decor-2" />
-            </div>
+
 
             <div className="lp-hero-actions">
               <Link to="/home" className="btn btn-primary btn-lg lp-cta">
@@ -81,37 +77,58 @@ export default function LandingPage() {
       {/* How It Works Section */}
       <section className="lp-how-it-works">
         <div className="container">
-          <motion.div className="lp-section-header" {...fadeInUp}>
-            <h2>How it works</h2>
-            <p>Your favorite meal is just a few clicks away</p>
-          </motion.div>
+          <div className="lp-hiw-layout">
+            {/* Left: heading + steps */}
+            <div className="lp-hiw-content">
+              <motion.div className="lp-hiw-header" {...fadeInUp}>
+                <h2>How it works</h2>
+                <p>Your favorite meal is just a few clicks away</p>
+              </motion.div>
 
-          <div className="lp-steps-grid">
-            <motion.div className="lp-step-item" {...fadeInUp} transition={{ delay: 0.1 }}>
-              <div className="lp-step-icon-wrap">
-                <MapPin size={32} />
-                <span className="lp-step-number">1</span>
-              </div>
-              <h3>Set Location</h3>
-              <p>Select your location to see all available restaurants near you.</p>
-            </motion.div>
+              <div className="lp-steps-grid">
+                <motion.div className="lp-step-item" {...fadeInUp} transition={{ delay: 0.1 }}>
+                  <div className="lp-step-icon-wrap">
+                    <MapPin size={32} />
+                    <span className="lp-step-number">1</span>
+                  </div>
+                  <h3>Set Location</h3>
+                  <p>Select your location to see all available restaurants near you.</p>
+                </motion.div>
 
-            <motion.div className="lp-step-item" {...fadeInUp} transition={{ delay: 0.2 }}>
-              <div className="lp-step-icon-wrap">
-                <Utensils size={32} />
-                <span className="lp-step-number">2</span>
-              </div>
-              <h3>Choose Dish</h3>
-              <p>Browse through menus and select your favorite dishes.</p>
-            </motion.div>
+                <motion.div className="lp-step-item" {...fadeInUp} transition={{ delay: 0.2 }}>
+                  <div className="lp-step-icon-wrap">
+                    <Utensils size={32} />
+                    <span className="lp-step-number">2</span>
+                  </div>
+                  <h3>Choose Dish</h3>
+                  <p>Browse through menus and select your favorite dishes.</p>
+                </motion.div>
 
-            <motion.div className="lp-step-item" {...fadeInUp} transition={{ delay: 0.3 }}>
-              <div className="lp-step-icon-wrap">
-                <Truck size={32} />
-                <span className="lp-step-number">3</span>
+                <motion.div className="lp-step-item" {...fadeInUp} transition={{ delay: 0.3 }}>
+                  <div className="lp-step-icon-wrap">
+                    <Truck size={32} />
+                    <span className="lp-step-number">3</span>
+                  </div>
+                  <h3>Fast Delivery</h3>
+                  <p>Our riders will deliver your food fresh and hot to your doorstep.</p>
+                </motion.div>
               </div>
-              <h3>Fast Delivery</h3>
-              <p>Our riders will deliver your food fresh and hot to your doorstep.</p>
+            </div>
+
+            {/* Right: image with orange bg shape */}
+            <motion.div
+              className="lp-hiw-image-container"
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+            >
+              <div className="lp-hiw-orange-blob"></div>
+              <img
+                src="/landing-page-img.png"
+                alt="How it works"
+                className="lp-hiw-dish"
+              />
             </motion.div>
           </div>
         </div>
