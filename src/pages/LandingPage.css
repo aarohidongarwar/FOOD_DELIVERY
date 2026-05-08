@@ -351,8 +351,40 @@
   cursor: pointer;
 }
 
-.lp-app-mockup {
+.lp-app-mockup-container {
   flex: 1;
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+
+.lp-app-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  z-index: 0;
+}
+
+.lp-app-circle-1 {
+  width: 300px;
+  height: 300px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.lp-app-circle-2 {
+  width: 450px;
+  height: 450px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.lp-app-mockup {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: center;
 }
@@ -361,6 +393,7 @@
   width: 100%;
   max-width: 450px;
   margin-bottom: -100px;
+  filter: drop-shadow(0 30px 60px rgba(0,0,0,0.3));
 }
 
 /* ══════════════════════════════════════════════

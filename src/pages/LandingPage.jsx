@@ -69,11 +69,23 @@ export default function LandingPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            <img 
-              src="/landing-hero.png" 
-              alt="Fresh Noodles" 
-              className="lp-hero-dish"
-            />
+            <motion.div
+              animate={{
+                y: [0, -15, 0],
+                rotate: [0, 1, -1, 0]
+              }}
+              transition={{
+                duration: 5,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            >
+              <img 
+                src="/landing-hero.png" 
+                alt="Fresh Noodles" 
+                className="lp-hero-dish"
+              />
+            </motion.div>
           </motion.div>
         </div>
       </section>
@@ -185,13 +197,30 @@ export default function LandingPage() {
               </div>
             </motion.div>
             <motion.div 
-              className="lp-app-mockup"
+              className="lp-app-mockup-container"
               initial={{ opacity: 0, y: 100 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 1 }}
             >
-              <img src="/app-mockup.png" alt="App Mockup" />
+              {/* Decorative background elements */}
+              <div className="lp-app-circle lp-app-circle-1"></div>
+              <div className="lp-app-circle lp-app-circle-2"></div>
+              
+              <motion.div 
+                className="lp-app-mockup"
+                animate={{
+                  y: [0, -20, 0],
+                  rotateZ: [0, -1, 1, 0]
+                }}
+                transition={{
+                  duration: 6,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              >
+                <img src="/phone-mockup.png" alt="App Mockup" />
+              </motion.div>
             </motion.div>
           </div>
         </div>
