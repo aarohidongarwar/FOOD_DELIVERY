@@ -2,8 +2,6 @@
   position: relative;
   overflow-x: hidden;
   background: #FFFFFF;
-  /* Pull back up since main-content adds navbar padding;
-     landing page uses a transparent overlay navbar */
   margin-top: calc(-1 * var(--nav-height));
 }
 
@@ -16,10 +14,9 @@
 .bg-blue-light { background: rgba(59, 130, 246, 0.1); }
 
 /* ══════════════════════════════════════════════
-   New Split-Screen UI Layout
+   Hero Section
    ══════════════════════════════════════════════ */
 
-/* The Large Orange Curved Shape */
 .lp-bg-orange-shape {
   position: absolute;
   top: -10%;
@@ -32,14 +29,12 @@
   pointer-events: none;
 }
 
-/* Hero Section */
 .lp-hero {
   min-height: 100vh;
   display: flex;
   align-items: center;
   position: relative;
   z-index: 1;
-  /* Top padding = navbar height to clear the transparent nav */
   padding-top: var(--nav-height);
 }
 
@@ -53,7 +48,6 @@
 .lp-hero-content {
   flex: 1;
   max-width: 600px;
-  text-align: left;
 }
 
 .lp-title {
@@ -78,7 +72,6 @@
   gap: 20px;
 }
 
-/* Orange Pill CTA Button */
 .lp-cta {
   background: #FF9F0D !important;
   color: white !important;
@@ -91,12 +84,6 @@
   gap: 12px !important;
   border: none !important;
   box-shadow: 0 10px 25px rgba(255, 159, 13, 0.4) !important;
-  transition: all 0.3s ease !important;
-}
-
-.lp-cta:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 15px 30px rgba(255, 159, 13, 0.5) !important;
 }
 
 .lp-cta-secondary {
@@ -104,16 +91,14 @@
   border-radius: var(--radius-full) !important;
   font-weight: 700 !important;
   border: 1.5px solid #DDD !important;
+  background: white !important;
+  color: #1A1A1A !important;
 }
 
-
-
-/* The Overlapping Food Dish */
 .lp-hero-image-container {
   flex: 1.2;
   display: flex;
   justify-content: center;
-  align-items: center;
   position: relative;
 }
 
@@ -128,27 +113,18 @@
    ══════════════════════════════════════════════ */
 .lp-how-it-works {
   padding: 120px 0;
-  background: #FFFFFF;
+  background: #FAFAFA;
 }
 
-.lp-section-header {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  margin-bottom: 80px;
-}
-
-/* Split layout: steps left, image right */
 .lp-hiw-layout {
   display: flex;
   align-items: center;
   gap: 80px;
+  justify-content: space-between;
 }
 
 .lp-hiw-content {
-  flex: 1.1;
+  flex: 1.2;
 }
 
 .lp-hiw-header {
@@ -157,9 +133,9 @@
 
 .lp-hiw-header h2 {
   font-size: 3rem;
-  color: #1A1A1A;
   font-weight: 800;
   margin-bottom: 16px;
+  color: #1A1A1A;
 }
 
 .lp-hiw-header p {
@@ -168,68 +144,26 @@
 }
 
 .lp-steps-grid {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 40px;
 }
 
-/* Override step items to left-align in the new layout */
-.lp-hiw-content .lp-step-item {
-  text-align: left;
+.lp-step-item {
   display: flex;
   align-items: flex-start;
   gap: 24px;
 }
 
-.lp-hiw-content .lp-step-icon-wrap {
-  margin: 0;
-  flex-shrink: 0;
-}
-
-/* Right side: image with orange blob */
-.lp-hiw-image-container {
-  flex: 1;
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 500px;
-}
-
-.lp-hiw-orange-blob {
-  position: absolute;
-  width: 420px;
-  height: 420px;
-  background: #FF9F0D;
-  border-radius: 50%;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 0;
-}
-
-.lp-hiw-dish {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 460px;
-  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.15));
-}
-
-.lp-step-item {
-  text-align: center;
-  position: relative;
-}
-
 .lp-step-icon-wrap {
-  width: 100px;
-  height: 100px;
+  width: 80px;
+  height: 80px;
   background: white;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 30px;
+  flex-shrink: 0;
   color: #FF9F0D;
   box-shadow: 0 10px 30px rgba(0,0,0,0.05);
   position: relative;
@@ -239,8 +173,8 @@
   position: absolute;
   top: 0;
   right: 0;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   background: #1A1A1A;
   color: white;
   border-radius: 50%;
@@ -248,17 +182,48 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
 }
 
 .lp-step-item h3 {
-  font-size: 1.5rem;
-  margin-bottom: 16px;
+  font-size: 1.25rem;
+  margin-bottom: 8px;
+  color: #1A1A1A;
+  font-weight: 700;
 }
 
 .lp-step-item p {
   color: #666;
+  font-size: 1rem;
   line-height: 1.6;
+}
+
+.lp-hiw-image-container {
+  flex: 1;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.lp-hiw-orange-blob {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: #FF9F0D;
+  border-radius: 50%;
+  z-index: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.lp-hiw-dish {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 450px;
+  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.15));
 }
 
 /* ══════════════════════════════════════════════
@@ -293,7 +258,8 @@
 .lp-features-content h2 {
   font-size: 3rem;
   margin-bottom: 24px;
-  line-height: 1.2;
+  color: #1A1A1A;
+  font-weight: 800;
 }
 
 .lp-features-content p {
@@ -306,6 +272,8 @@
   display: flex;
   flex-direction: column;
   gap: 30px;
+  list-style: none;
+  padding: 0;
 }
 
 .lp-features-list li {
@@ -328,11 +296,14 @@
 .lp-features-list h4 {
   font-size: 1.125rem;
   margin-bottom: 6px;
+  color: #1A1A1A;
+  font-weight: 700;
 }
 
 .lp-features-list p {
   font-size: 0.938rem;
   margin-bottom: 0;
+  color: #666;
 }
 
 .lp-features-visual {
@@ -349,11 +320,19 @@
 .lp-visual-card {
   position: absolute;
   background: white;
-  padding: 20px 24px;
-  border-radius: 20px;
+  padding: 16px 24px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  font-weight: 700;
+  z-index: 5;
+}
+
+.lp-card-1 { top: 10%; left: -30px; }
+.lp-card-2 { bottom: 10%; right: -20px; }
+
 /* ══════════════════════════════════════════════
    App Promo Section
    ══════════════════════════════════════════════ */
@@ -378,6 +357,7 @@
   font-size: 3rem;
   color: white;
   margin-bottom: 24px;
+  font-weight: 800;
 }
 
 .lp-app-content p {
@@ -389,43 +369,30 @@
 .lp-app-badges {
   display: flex;
   gap: 20px;
+  margin-top: 40px;
 }
 
-.lp-app-badges img {
-  height: 50px;
-  cursor: pointer;
-}
+.lp-app-badges img { height: 48px; cursor: pointer; }
 
 .lp-app-mockup-container {
   flex: 1;
+  position: relative;
   display: flex;
   justify-content: center;
-  position: relative;
 }
 
 .lp-app-circle {
   position: absolute;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.15);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 0;
 }
 
-.lp-app-circle-1 {
-  width: 300px;
-  height: 300px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.lp-app-circle-2 {
-  width: 450px;
-  height: 450px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(255, 255, 255, 0.08);
-}
+.lp-app-circle-1 { width: 300px; height: 300px; }
+.lp-app-circle-2 { width: 450px; height: 450px; background: rgba(255, 255, 255, 0.08); }
 
 .lp-app-mockup {
   position: relative;
@@ -439,32 +406,27 @@
   max-width: 450px;
   margin-bottom: -100px;
   filter: drop-shadow(0 30px 60px rgba(0,0,0,0.3));
+  display: block;
 }
 
 /* ══════════════════════════════════════════════
-   Roles Section (Updated)
+   Join the Ecosystem
    ══════════════════════════════════════════════ */
 .lp-roles-section {
   padding: 120px 0;
   background: white;
-  position: relative;
-  z-index: 1;
 }
 
 .lp-section-header {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   text-align: center;
   margin-bottom: 80px;
 }
 
 .lp-section-header h2 {
   font-size: 3rem;
-  color: #1A1A1A;
-  margin-bottom: 20px;
   font-weight: 800;
+  margin-bottom: 16px;
+  color: #1A1A1A;
 }
 
 .lp-section-header p {
@@ -474,7 +436,7 @@
 
 .lp-roles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 40px;
 }
 
@@ -483,51 +445,55 @@
   padding: 48px;
   border-radius: 32px;
   border: 1px solid #F0F0F0;
-  transition: all 0.3s ease;
   text-align: center;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .lp-role-card:hover {
-  transform: translateY(-12px);
-  box-shadow: 0 25px 50px rgba(0,0,0,0.08);
+  transform: translateY(-10px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.05);
   border-color: #FF9F0D;
 }
 
 .lp-role-icon {
-  width: 90px;
-  height: 90px;
-  border-radius: 24px;
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 32px;
+  margin-bottom: 32px;
+  flex-shrink: 0;
 }
 
 .lp-role-title {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
   margin-bottom: 16px;
   color: #1A1A1A;
-  font-weight: 700;
 }
 
 .lp-role-desc {
   color: #666;
-  margin-bottom: 40px;
-  font-size: 1.063rem;
+  margin-bottom: 32px;
   line-height: 1.6;
+  flex-grow: 1;
 }
 
 .lp-cta-text {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
   color: #FF9F0D;
   font-weight: 700;
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* ══════════════════════════════════════════════
-   Final CTA Section
+   Final CTA
    ══════════════════════════════════════════════ */
 .lp-final-cta {
   padding: 120px 0;
@@ -540,14 +506,15 @@
   padding: 80px;
   text-align: center;
   color: white;
-  position: relative;
-  overflow: hidden;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .lp-cta-box h2 {
-  color: white;
   font-size: 3.5rem;
+  color: white;
   margin-bottom: 24px;
+  font-weight: 800;
 }
 
 .lp-cta-box p {
@@ -555,122 +522,56 @@
   margin-bottom: 48px;
   opacity: 0.8;
   max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
+  margin: 0 auto 48px;
 }
 
 .lp-final-btn {
   background: #FF9F0D !important;
   color: white !important;
-  padding: 20px 60px !important;
+  padding: 18px 50px !important;
   border-radius: var(--radius-full) !important;
-  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  font-size: 1.125rem !important;
   border: none !important;
+  cursor: pointer;
+  display: inline-block;
+  text-decoration: none;
 }
 
 /* ══════════════════════════════════════════════
-   Responsive (Updated)
+   Responsive
    ══════════════════════════════════════════════ */
-
 @media (max-width: 1200px) {
   .lp-title { font-size: 4rem; }
-  .lp-bg-orange-shape { width: 65vw; }
+  .lp-roles-grid { gap: 24px; }
   .lp-features-layout { gap: 60px; }
 }
 
-
-  .lp-hero {
-    padding-top: 64px;
-    min-height: auto;
-    padding-bottom: 60px;
-  }
-  .lp-hero-inner {
-    flex-direction: column;
-    text-align: center;
-    gap: 40px;
-  }
-  .lp-hero-content {
-    text-align: center;
-    max-width: 100%;
-  }
-  .lp-subtitle { margin: 0 auto 40px; }
-  .lp-title { font-size: 3.5rem; }
+@media (max-width: 992px) {
+  .lp-hero-inner { flex-direction: column; text-align: center; gap: 40px; }
+  .lp-hero-content { max-width: 100%; }
   .lp-hero-actions { justify-content: center; }
+  .lp-hero-dish { max-width: 500px; }
+  .lp-bg-orange-shape { width: 100vw; height: 50vh; top: auto; bottom: 0; border-radius: 50% 50% 0 0; }
   
-  .lp-bg-orange-shape {
-    width: 100vw;
-    height: 55vh;
-    top: auto;
-    bottom: 0;
-    right: -5%;
-    border-radius: 60% 60% 0 0;
-  }
-  .lp-hero-image-container {
-    flex: unset;
-    width: 100%;
-    max-width: 480px;
-    margin: 0 auto;
-  }
+  .lp-hiw-layout { flex-direction: column; text-align: center; gap: 60px; }
+  .lp-step-item { flex-direction: column; align-items: center; text-align: center; }
+  .lp-hiw-image-container { min-height: 350px; }
   
-  .lp-hiw-layout {
-    flex-direction: column;
-    gap: 40px;
-  }
-  .lp-hiw-header {
-    text-align: center;
-  }
-  .lp-hiw-image-container {
-    min-height: 350px;
-    width: 100%;
-    max-width: 400px;
-    margin: 0 auto;
-  }
-  .lp-hiw-orange-blob {
-    width: 300px;
-    height: 300px;
-  }
-  .lp-steps-grid {
-    grid-template-columns: 1fr;
-    gap: 40px;
-  }
-
-  .lp-features-layout {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .lp-features-visual {
-    width: 100%;
-    max-width: 500px;
-    margin: 0 auto;
-  }
-
-  .lp-app-inner {
-    flex-direction: column;
-    text-align: center;
-  }
-
+  .lp-features-layout { flex-direction: column; text-align: center; }
+  .lp-features-visual { width: 100%; max-width: 500px; margin: 0 auto; }
+  
+  .lp-app-inner { flex-direction: column; text-align: center; }
   .lp-app-badges { justify-content: center; }
-
+  
+  .lp-roles-grid { grid-template-columns: 1fr; max-width: 500px; margin: 0 auto; }
+  
   .lp-cta-box { padding: 60px 30px; }
   .lp-cta-box h2 { font-size: 2.5rem; }
 }
 
 @media (max-width: 640px) {
-  .lp-title { font-size: 2.75rem; }
-  .lp-subtitle { font-size: 1rem; }
-  .lp-hero-actions { flex-direction: column; gap: 12px; }
-  .lp-cta { width: 100%; justify-content: center !important; }
-  .lp-cta-secondary { width: 100%; }
-  
-  .lp-features-content h2 { font-size: 2.25rem; }
-  .lp-app-content h2 { font-size: 2.25rem; }
-  .lp-app-mockup img { margin-bottom: -60px; }
-}
-
-@media (max-width: 480px) {
-  .lp-title { font-size: 2.25rem; }
-  .lp-bg-orange-shape { display: none; }
-  .lp-hero { background: linear-gradient(160deg, #fff 50%, #FFF3E0 100%); }
-   display: none; }
+  .lp-title { font-size: 3rem; }
+  .lp-hero-actions { flex-direction: column; }
+  .lp-cta, .lp-cta-secondary { width: 100%; justify-content: center !important; }
 }

@@ -8,8 +8,6 @@ import {
   ChevronRight, 
   MapPin, 
   Clock, 
-  CreditCard, 
-  Smartphone,
   Zap,
   Star,
   CheckCircle2
@@ -47,8 +45,6 @@ export default function LandingPage() {
               or looking to deliver, we have a place for you.
             </p>
             
-
-
             <div className="lp-hero-actions">
               <Link to="/home" className="btn btn-primary btn-lg lp-cta">
                 Order Now <ChevronRight size={20} />
@@ -90,7 +86,6 @@ export default function LandingPage() {
       <section className="lp-how-it-works">
         <div className="container">
           <div className="lp-hiw-layout">
-            {/* Left: heading + steps */}
             <div className="lp-hiw-content">
               <motion.div className="lp-hiw-header" {...fadeInUp}>
                 <h2>How it works</h2>
@@ -103,8 +98,10 @@ export default function LandingPage() {
                     <MapPin size={32} />
                     <span className="lp-step-number">1</span>
                   </div>
-                  <h3>Set Location</h3>
-                  <p>Select your location to see all available restaurants near you.</p>
+                  <div className="lp-step-text">
+                    <h3>Set Location</h3>
+                    <p>Select your location to see all available restaurants near you.</p>
+                  </div>
                 </motion.div>
 
                 <motion.div className="lp-step-item" {...fadeInUp} transition={{ delay: 0.2 }}>
@@ -112,8 +109,10 @@ export default function LandingPage() {
                     <Utensils size={32} />
                     <span className="lp-step-number">2</span>
                   </div>
-                  <h3>Choose Dish</h3>
-                  <p>Browse through menus and select your favorite dishes.</p>
+                  <div className="lp-step-text">
+                    <h3>Choose Dish</h3>
+                    <p>Browse through menus and select your favorite dishes.</p>
+                  </div>
                 </motion.div>
 
                 <motion.div className="lp-step-item" {...fadeInUp} transition={{ delay: 0.3 }}>
@@ -121,13 +120,14 @@ export default function LandingPage() {
                     <Truck size={32} />
                     <span className="lp-step-number">3</span>
                   </div>
-                  <h3>Fast Delivery</h3>
-                  <p>Our riders will deliver your food fresh and hot to your doorstep.</p>
+                  <div className="lp-step-text">
+                    <h3>Fast Delivery</h3>
+                    <p>Our riders will deliver your food fresh and hot to your doorstep.</p>
+                  </div>
                 </motion.div>
               </div>
             </div>
 
-            {/* Right: image with orange bg shape */}
             <motion.div
               className="lp-hiw-image-container"
               initial={{ opacity: 0, x: 50 }}
@@ -220,7 +220,6 @@ export default function LandingPage() {
               viewport={{ once: true }}
               transition={{ duration: 1 }}
             >
-              {/* Decorative background elements */}
               <div className="lp-app-circle lp-app-circle-1"></div>
               <div className="lp-app-circle lp-app-circle-2"></div>
               
@@ -243,7 +242,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Partners Section (Already semi-existed but moved here for flow) */}
+      {/* Partners Section */}
       <section className="lp-roles-section">
         <div className="container">
           <motion.div className="lp-section-header" {...fadeInUp}>
@@ -288,7 +287,7 @@ export default function LandingPage() {
           <motion.div className="lp-cta-box" {...fadeInUp}>
             <h2>Ready to satisfy your cravings?</h2>
             <p>Join thousands of happy customers today and experience the best food delivery service.</p>
-            <Link to="/home" className="btn btn-dark btn-lg lp-final-btn">
+            <Link to="/home" className="btn btn-primary btn-lg lp-final-btn">
               Get Started Now
             </Link>
           </motion.div>
