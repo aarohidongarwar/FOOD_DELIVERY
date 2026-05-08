@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import useAuthStore from './stores/authStore'
 
 // Components
-import { Navbar, Footer, CartDrawer, ProtectedRoute, SplashScreen } from './components'
+import { Navbar, Footer, CartDrawer, ProtectedRoute, SplashScreen, ScrollToTop } from './components'
 
 // Pages
 import { 
@@ -21,6 +21,7 @@ function AppLayout() {
 
   return (
     <>
+      <ScrollToTop />
       <Navbar onCartClick={() => setIsCartOpen(true)} />
       
       <main className="main-content">
