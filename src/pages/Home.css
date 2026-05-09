@@ -121,6 +121,10 @@
   margin-bottom: 48px;
 }
 
+.mind-display {
+  transition: all 0.5s ease;
+}
+
 .mind-carousel {
   display: flex;
   gap: 40px;
@@ -133,6 +137,13 @@
   height: 0;
 }
 
+.mind-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 32px;
+  padding: 16px 0;
+}
+
 .mind-card {
   display: flex;
   flex-direction: column;
@@ -140,34 +151,79 @@
   gap: 16px;
   min-width: 150px;
   scroll-snap-align: start;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
 }
-
 .mind-icon {
   width: 150px;
   height: 150px;
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-  transition: all var(--transition-fast);
-  background: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  background: #fff;
+  transition: all 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0,0,0,0.03);
 }
 
 .mind-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.8s ease;
+}
+
+.mind-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  text-decoration: none;
+  color: #3d4152;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  width: 150px;
 }
 
 .mind-card:hover .mind-icon {
-  transform: scale(1.05);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-8px);
+  box-shadow: 0 15px 30px rgba(0,0,0,0.12);
+  border-color: var(--primary-color);
+}
+
+.mind-card:hover .mind-img {
+  transform: scale(1.15);
 }
 
 .mind-card span {
+  font-size: 1.15rem;
   font-weight: 600;
-  color: var(--text-primary);
-  font-size: 1rem;
+  text-align: center;
+  color: #444;
+  transition: color 0.3s ease;
 }
+
+.mind-card:hover span {
+  color: var(--primary-color);
+}
+
+.view-all-card .mind-icon {
+  background: var(--primary-bg);
+  color: var(--primary);
+  border: 2px dashed var(--primary);
+}
+
+.view-all-card:hover .mind-icon {
+  background: var(--primary);
+  color: white;
+  border-style: solid;
+}
+
 
 /* Cuisines */
 .cuisines-carousel {

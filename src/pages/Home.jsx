@@ -16,24 +16,59 @@ export default function Home() {
     fetchCuisines();
   }, [fetchRestaurants, fetchCuisines]);
 
+  const [showAllMindItems, setShowAllMindItems] = useState(false);
+
   const mindItems = [
-    { name: 'Pizza', image: '/assets/cuisines/pizza.png', search: 'Pizza' },
-    { name: 'Burger', image: '/assets/cuisines/burger.png', search: 'Burger' },
-    { name: 'Biryani', image: '/assets/cuisines/biryani.png', search: 'Biryani' },
-    { name: 'Dosa', image: '/assets/cuisines/dosa.png', search: 'Dosa' },
-    { name: 'Noodles', image: '/assets/cuisines/noodles.png', search: 'Noodles' },
-    { name: 'Cake', image: '/assets/cuisines/cake.png', search: 'Cake' },
-    { name: 'Momos', image: 'https://images.unsplash.com/photo-1625220194771-7ebdea0b70b9?w=240&h=240&fit=crop&q=80', search: 'Momos' },
-    { name: 'Thali', image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=240&h=240&fit=crop&q=80', search: 'Thali' },
-    { name: 'Rolls', image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=240&h=240&fit=crop&q=80', search: 'Roll' },
-    { name: 'Cold Drink', image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=240&h=240&fit=crop&q=80', search: 'Drink' },
-    { name: 'Sandwich', image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=240&h=240&fit=crop&q=80', search: 'Sandwich' },
-    { name: 'Pasta', image: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856?w=240&h=240&fit=crop&q=80', search: 'Pasta' },
-    { name: 'Paratha', image: 'https://images.unsplash.com/photo-1626132646501-447481d114a4?w=240&h=240&fit=crop&q=80', search: 'Paratha' },
-    { name: 'Coffee', image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=240&h=240&fit=crop&q=80', search: 'Coffee' },
-    { name: 'Healthy', image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=240&h=240&fit=crop&q=80', search: 'Salad' },
-    { name: 'Ice Cream', image: 'https://images.unsplash.com/photo-1501443762994-82bd5dace89a?w=240&h=240&fit=crop&q=80', search: 'Ice Cream' },
+    { name: 'Biryani', image: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=400&h=400&fit=crop&q=80', search: 'Biryani' },
+    { name: 'Chole Bhature', image: 'https://images.unsplash.com/photo-1626132646501-447481d114a4?w=400&h=400&fit=crop&q=80', search: 'Chole Bhature' },
+    { name: 'Pani Puri', image: 'https://images.unsplash.com/photo-1601050690597-df056fb1779f?w=400&h=400&fit=crop&q=80', search: 'Pani Puri' },
+    { name: 'Pav Bhaji', image: 'https://images.unsplash.com/photo-1606491956689-2ea8c5383c82?w=400&h=400&fit=crop&q=80', search: 'Pav Bhaji' },
+    { name: 'Dosa', image: 'https://images.unsplash.com/photo-1630383249896-424e482df771?w=400&h=400&fit=crop&q=80', search: 'Dosa' },
+    { name: 'Samosa', image: 'https://images.unsplash.com/photo-1626331334714-39c1f331f885?w=400&h=400&fit=crop&q=80', search: 'Samosa' },
+    { name: 'Vada Pav', image: 'https://images.unsplash.com/photo-1632778149975-40046a7a8d71?w=400&h=400&fit=crop&q=80', search: 'Vada Pav' },
+    { name: 'Momos', image: 'https://images.unsplash.com/photo-1625220194771-7ebdea0b70b9?w=400&h=400&fit=crop&q=80', search: 'Momos' },
+    { name: 'Burger', image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=400&h=400&fit=crop&q=80', search: 'Burger' },
+    { name: 'Pizza', image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=400&fit=crop&q=80', search: 'Pizza' },
+    { name: 'Paneer Tikka', image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=400&h=400&fit=crop&q=80', search: 'Paneer Tikka' },
+    { name: 'Dal Makhani', image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&h=400&fit=crop&q=80', search: 'Dal Makhani' },
+    { name: 'Gulab Jamun', image: 'https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=400&h=400&fit=crop&q=80', search: 'Gulab Jamun' },
+    { name: 'Jalebi', image: 'https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=400&h=400&fit=crop&q=80', search: 'Jalebi' },
+    { name: 'Kathi Roll', image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=400&h=400&fit=crop&q=80', search: 'Roll' },
+    { name: 'Idli', image: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=400&h=400&fit=crop&q=80', search: 'Idli' },
+    { name: 'Paratha', image: 'https://images.unsplash.com/photo-1628106278729-82bc5dace89a?w=400&h=400&fit=crop&q=80', search: 'Paratha' },
+    { name: 'Dhokla', image: 'https://images.unsplash.com/photo-1626132646529-543343d6668a?w=400&h=400&fit=crop&q=80', search: 'Dhokla' },
+    { name: 'Kachori', image: 'https://images.unsplash.com/photo-1626331334714-39c1f331f885?w=400&h=400&fit=crop&q=80', search: 'Kachori' },
+    { name: 'Poha', image: 'https://images.unsplash.com/photo-1626132646529-543343d6668a?w=400&h=400&fit=crop&q=80', search: 'Poha' },
+    { name: 'Aloo Tikki', image: 'https://images.unsplash.com/photo-1601050690597-df056fb1779f?w=400&h=400&fit=crop&q=80', search: 'Aloo Tikki' },
+    { name: 'Chaat', image: 'https://images.unsplash.com/photo-1601050690597-df056fb1779f?w=400&h=400&fit=crop&q=80', search: 'Chaat' },
+    { name: 'Rasgulla', image: 'https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=400&h=400&fit=crop&q=80', search: 'Rasgulla' },
+    { name: 'Lassi', image: 'https://images.unsplash.com/photo-1596797038558-bc43ffb19e07?w=400&h=400&fit=crop&q=80', search: 'Lassi' },
+    { name: 'Masala Chai', image: 'https://images.unsplash.com/photo-1591924106207-323ff10189af?w=400&h=400&fit=crop&q=80', search: 'Chai' },
+    { name: 'Kulcha', image: 'https://images.unsplash.com/photo-1533777324545-e016795228c1?w=400&h=400&fit=crop&q=80', search: 'Kulcha' },
+    { name: 'Tandoori Chicken', image: 'https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=400&h=400&fit=crop&q=80', search: 'Tandoori' },
+    { name: 'Butter Chicken', image: 'https://images.unsplash.com/photo-1603894584713-f480766a4607?w=400&h=400&fit=crop&q=80', search: 'Butter Chicken' },
+    { name: 'Misal Pav', image: 'https://images.unsplash.com/photo-1606491956689-2ea8c5383c82?w=400&h=400&fit=crop&q=80', search: 'Misal Pav' },
+    { name: 'Sabudana Khichdi', image: 'https://images.unsplash.com/photo-1626132646529-543343d6668a?w=400&h=400&fit=crop&q=80', search: 'Khichdi' },
+    { name: 'Medu Vada', image: 'https://images.unsplash.com/photo-1628106278729-82bc5dace89a?w=400&h=400&fit=crop&q=80', search: 'Medu Vada' },
+    { name: 'Uttapam', image: 'https://images.unsplash.com/photo-1628106278729-82bc5dace89a?w=400&h=400&fit=crop&q=80', search: 'Uttapam' },
+    { name: 'Rajma Chawal', image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&h=400&fit=crop&q=80', search: 'Rajma' },
+    { name: 'Kadhi Chawal', image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&h=400&fit=crop&q=80', search: 'Kadhi' },
+    { name: 'Chicken Tikka', image: 'https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=400&h=400&fit=crop&q=80', search: 'Chicken Tikka' },
+    { name: 'Hyderabadi Biryani', image: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=400&h=400&fit=crop&q=80', search: 'Biryani' },
+    { name: 'Malai Kofta', image: 'https://images.unsplash.com/photo-1603894584713-f480766a4607?w=400&h=400&fit=crop&q=80', search: 'Malai Kofta' },
+    { name: 'Palak Paneer', image: 'https://images.unsplash.com/photo-1601050690597-df056fb1779f?w=400&h=400&fit=crop&q=80', search: 'Palak Paneer' },
+    { name: 'Rasmalai', image: 'https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=400&h=400&fit=crop&q=80', search: 'Rasmalai' },
+    { name: 'Kheer', image: 'https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=400&h=400&fit=crop&q=80', search: 'Kheer' },
   ];
+
+
+
+
+
+
+
+  const initialItemsCount = 10;
+  const displayedItems = showAllMindItems ? mindItems : mindItems.slice(0, initialItemsCount);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -44,13 +79,14 @@ export default function Home() {
 
   const getCuisineImage = (cuisine) => {
     const images = {
-      'North Indian': '/assets/cuisines/biryani.png',
-      'Italian': '/assets/cuisines/pizza.png',
-      'South Indian': '/assets/cuisines/dosa.png',
-      'Chinese': '/assets/cuisines/noodles.png',
-      'Fast Food': '/assets/cuisines/burger.png',
-      'Desserts': '/assets/cuisines/cake.png',
-      'Beverages': '☕', // Fallback to emoji if no image
+      'North Indian': 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=120&h=120&fit=crop',
+      'Italian': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=120&h=120&fit=crop',
+      'South Indian': 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=120&h=120&fit=crop',
+      'Chinese': 'https://images.unsplash.com/photo-1585032226651-759b368d7246?w=120&h=120&fit=crop',
+      'Fast Food': 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=120&h=120&fit=crop',
+      'Desserts': 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=120&h=120&fit=crop',
+      'Beverages': 'https://images.unsplash.com/photo-1596797038558-bc43ffb19e07?w=120&h=120&fit=crop',
+      'Street Food': 'https://images.unsplash.com/photo-1601050690597-df056fb1779f?w=120&h=120&fit=crop',
       'Grocery': '🛒'
     };
     return images[cuisine] || '🍽️';
@@ -118,25 +154,58 @@ export default function Home() {
       <section className="mind-section container">
         <div className="section-header">
           <h2>What's on your mind?</h2>
+          {showAllMindItems && (
+            <button 
+              className="btn btn-ghost btn-sm"
+              onClick={() => setShowAllMindItems(false)}
+            >
+              Show Less
+            </button>
+          )}
         </div>
-        <div className="mind-carousel">
-          {mindItems.map((item, i) => (
+        <div className={`mind-display ${showAllMindItems ? 'mind-grid' : 'mind-carousel'}`}>
+          {displayedItems.map((item, i) => (
             <motion.div
               key={item.name}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3, delay: i * 0.05 }}
+              transition={{ duration: 0.3, delay: i * 0.03 }}
             >
               <Link to={`/restaurants?search=${encodeURIComponent(item.search)}`} className="mind-card">
                 <div className="mind-icon">
-                  <img src={item.image} alt={item.name} className="mind-img" />
+                  <img 
+                    src={item.image} 
+                    alt={item.name} 
+                    className="mind-img" 
+                    loading="lazy"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=240&h=240&fit=crop&q=80';
+                    }}
+                  />
                 </div>
                 <span>{item.name}</span>
               </Link>
             </motion.div>
           ))}
+          
+          {!showAllMindItems && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: initialItemsCount * 0.03 }}
+            >
+              <button className="mind-card view-all-card" onClick={() => setShowAllMindItems(true)}>
+                <div className="mind-icon view-all-icon">
+                  <ChevronRight size={32} />
+                </div>
+                <span>View All</span>
+              </button>
+            </motion.div>
+          )}
         </div>
       </section>
+
 
       {/* Cuisines Categories - Keep as a secondary filter if needed, or remove if redundant */}
       {cuisines.length > 0 && (
