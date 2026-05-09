@@ -1,282 +1,686 @@
 import { useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
-import { MapPin, Navigation, IndianRupee, Package, CheckCircle, Power } from 'lucide-react';
-import api from '../api';
+import { useNavigate } from 'react-router-dom';
+import { 
+  LayoutDashboard, 
+  Package, 
+  IndianRupee, 
+  Bell, 
+  User, 
+  LogOut, 
+  Power,
+  Star,
+  TrendingUp,
+  CircleDollarSign,
+  Truck,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Phone,
+  BarChart3,
+  Calendar,
+  CheckCircle2,
+  Lock,
+  Mail,
+  X
+} from 'lucide-react';
 import useAuthStore from '../stores/authStore';
-import { OrderStatusBadge, LoadingSpinner } from '../components';
-import './Dashboard.css';
+import api from '../api';
+import './DriverDashboard.css';
 
 export default function DriverDashboard() {
-  const { user } = useAuthStore();
-  const [stats, setStats] = useState(null);
-  const [availableOrders, setAvailableOrders] = useState([]);
-  const [activeDeliveries, setActiveDeliveries] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [earningsFilter, setEarningsFilter] = useState('This Month');
+  const [isOnline, setIsOnline] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState('');
+  const [otpInput, setOtpInput] = useState('');
+  
+  const [stats, setStats] = useState({
+    todayEarnings: 75,
+    weekEarnings: 75,
+    monthEarnings: 75,
+    totalDeliveries: 142,
+    activeOrders: 1,
+    rating: 4.8,
+    avgPerDelivery: 38,
+    totalEarningsBreakdown: 75,
+    totalDeliveriesBreakdown: 2
+  });
 
-  const fetchDriverData = async () => {
+  const [orders, setOrders] = useState([
+    {
+      id: 'ORD-009-SAMPLE',
+      restaurant: 'Swiggy Pop',
+      status: 'Delivered',
+      pickup: 'JP Nagar, Bangalore',
+      delivery: 'BTM Layout, Bangalore',
+      customer: 'Kiran Bhat',
+      phone: '9876543008',
+      fee: 30,
+      date: '9 May 2026',
+      expanded: false
+    },
+    {
+      id: 'ORD-003-SAMPLE',
+      restaurant: 'Dominos',
+      status: 'On The Way',
+      pickup: 'Koramangala, Bangalore',
+      delivery: 'HSR Layout, Bangalore',
+      customer: 'Rahul Verma',
+      phone: '9822114455',
+      fee: 45,
+      date: '9 May 2026',
+      expanded: true
+    },
+    {
+      id: 'ORD-001-SAMPLE',
+      restaurant: 'Burger King',
+      status: 'Delivered',
+      pickup: 'Indiranagar, Bangalore',
+      delivery: 'MG Road, Bangalore',
+      customer: 'Sneha Rao',
+      phone: '9988776655',
+      fee: 25,
+      date: '8 May 2026',
+      expanded: false
+    }
+  ]);
+
+  const [notifications, setNotifications] = useState([
+    {
+      id: 1,
+      title: 'Delivery Completed',
+      message: 'Order ORD-001-SAMPLE delivered. Earnings: Rs.45',
+      time: '9 May, 06:52 pm',
+      unread: false,
+      type: 'success'
+    },
+    {
+      id: 2,
+      title: 'New Order Assigned',
+      message: 'You have been assigned order ORD-003-SAMPLE from Dominos',
+      time: '9 May, 06:52 pm',
+      unread: true,
+      type: 'info'
+    }
+  ]);
+
+  const [profileData, setProfileData] = useState({
+    fullName: user?.name || 'Arjun Sharma',
+    phone: user?.phone || '9876543210',
+    email: user?.email || 'arjun@rider.com',
+    address: '12 MG Road, Bangalore',
+    emergencyContact: '9988776655',
+    vehicleNumber: 'KA01MN5678',
+    vehicleType: 'Bike'
+  });
+
+  const fetchStats = async () => {
     try {
-      const [statsRes, availableRes, activeRes] = await Promise.all([
-        api.get('/delivery/stats'),
-        api.get('/delivery/available'),
-        api.get('/delivery/my-deliveries')
-      ]);
-      setStats(statsRes.data);
-      setAvailableOrders(availableRes.data);
-      setActiveDeliveries(activeRes.data);
+      const { data } = await api.get('/delivery/stats');
+      if (data) {
+        setStats(prev => ({
+          ...prev,
+          todayEarnings: data.todayEarnings || prev.todayEarnings,
+          totalDeliveries: data.total_deliveries || prev.totalDeliveries,
+          activeOrders: data.active_orders || 0,
+          rating: data.rating || prev.rating,
+          totalEarningsBreakdown: data.totalEarnings || prev.totalEarningsBreakdown
+        }));
+        setIsOnline(data.status !== 'offline');
+      }
     } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+      console.error("Failed to fetch stats", err);
     }
   };
 
   useEffect(() => {
-    fetchDriverData();
+    fetchStats();
+  }, []);
 
-    // Setup socket to receive new orders
-    const socket = io('/', { path: '/socket.io' });
-    
-    socket.on('new-order', (order) => {
-      // Re-fetch available orders if we receive a new order event
-      // Alternatively, we could just append if it doesn't have a driver
-      if (!order.driver_id) {
-        fetchDriverData();
-      }
-    });
-
-    socket.on('order-updated', () => {
-      fetchDriverData();
-    });
-
-    // Simulate location updates if active
-    const locationInterval = setInterval(() => {
-      if (stats?.status !== 'offline') {
-        // Random slight movement around Mumbai
-        const lat = 19.0760 + (Math.random() - 0.5) * 0.01;
-        const lon = 72.8777 + (Math.random() - 0.5) * 0.01;
-        
-        api.post('/delivery/location', { lat, lon }).catch(() => {});
-        
-        // Also emit via socket for active deliveries
-        activeDeliveries.forEach(order => {
-          socket.emit('driver-location', { orderId: order.id, lat, lon });
-        });
-      }
-    }, 10000); // Update every 10s
-
-    return () => {
-      socket.disconnect();
-      clearInterval(locationInterval);
-    };
-  }, [stats?.status, activeDeliveries]);
+  const handleLogout = () => {
+    logout();
+    window.location.href = '/';
+  };
 
   const toggleStatus = async () => {
     try {
-      const newStatus = stats.status === 'offline' ? 'available' : 'offline';
-      const { data } = await api.post('/delivery/toggle-status', { status: newStatus });
-      setStats({ ...stats, status: data.status });
+      const newStatus = isOnline ? 'offline' : 'available';
+      await api.post('/delivery/toggle-status', { status: newStatus });
+      setIsOnline(!isOnline);
     } catch (err) {
-      alert('Failed to change status');
+      console.error("Failed to toggle status", err);
     }
   };
 
-  const acceptOrder = async (orderId) => {
-    try {
-      await api.post(`/delivery/accept/${orderId}`);
-      fetchDriverData();
-    } catch (err) {
-      alert('Failed to accept order');
+  const toggleOrderExpand = (id) => {
+    setOrders(orders.map(order => 
+      order.id === id ? { ...order, expanded: !order.expanded } : order
+    ));
+  };
+
+  const markAllRead = () => {
+    setNotifications(notifications.map(n => ({ ...n, unread: false })));
+  };
+
+  const handleProfileUpdate = (e) => {
+    e.preventDefault();
+    alert('Profile updated successfully!');
+  };
+
+  const handlePasswordUpdate = (e) => {
+    e.preventDefault();
+    alert('Password updated successfully!');
+  };
+
+  const openOtpModal = (id) => {
+    setSelectedOrderId(id);
+    setShowOtpModal(true);
+    setOtpInput('');
+  };
+
+  const handleVerifyDelivery = () => {
+    if (otpInput.length === 4) {
+      alert(`Order ${selectedOrderId} delivered successfully!`);
+      setShowOtpModal(false);
+      setOrders(orders.map(o => o.id === selectedOrderId ? { ...o, status: 'Delivered', expanded: false } : o));
+    } else {
+      alert('Please enter a valid 4-digit OTP');
     }
   };
 
-  const updateOrderStatus = async (orderId, newStatus) => {
-    try {
-      await api.put(`/orders/${orderId}/status`, { status: newStatus });
-      fetchDriverData();
-    } catch (err) {
-      alert('Failed to update status');
-    }
-  };
-
-  if (loading) return <LoadingSpinner fullScreen />;
-
-  const isOnline = stats?.status === 'available' || stats?.status === 'busy';
+  const unreadCount = notifications.filter(n => n.unread).length;
 
   return (
-    <div className="dashboard-page container">
-      <div className="driver-header">
-        <div>
-          <h1>Welcome back, {user.name.split(' ')[0]}</h1>
-          <p className="subtitle">Here's your delivery dashboard</p>
+    <div className="driver-dashboard-layout">
+      {/* Sidebar */}
+      <aside className="driver-sidebar">
+        <div className="sidebar-logo">
+          <div className="logo-icon-box">
+            <Truck size={24} color="white" />
+          </div>
+          <div className="logo-text-box">
+            <h2>QuickBite</h2>
+            <p>Rider Portal</p>
+          </div>
         </div>
-        <button 
-          className={`btn ${isOnline ? 'btn-status-online' : 'btn-status-offline'}`}
-          onClick={toggleStatus}
-        >
-          <Power size={18} />
-          {isOnline ? 'GO OFFLINE' : 'GO ONLINE'}
-        </button>
-      </div>
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon bg-green-light">
-            <IndianRupee size={24} className="text-green" />
-          </div>
-          <div className="stat-info">
-            <p className="stat-label">Total Earnings</p>
-            <h3 className="stat-value">₹{stats?.totalEarnings || 0}</h3>
-          </div>
+        <div className="sidebar-user">
+          <h3>{user?.name || 'Arjun Sharma'}</h3>
+          <p>
+            <span className={`status-dot ${isOnline ? 'online' : ''}`}></span>
+            {isOnline ? 'Online' : 'Offline'}
+          </p>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon bg-blue-light">
-            <Package size={24} className="text-blue" />
-          </div>
-          <div className="stat-info">
-            <p className="stat-label">Deliveries Today</p>
-            <h3 className="stat-value">{stats?.todayOrders || 0}</h3>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon bg-yellow-light">
-            <CheckCircle size={24} className="text-yellow" />
-          </div>
-          <div className="stat-info">
-            <p className="stat-label">Total Deliveries</p>
-            <h3 className="stat-value">{stats?.total_deliveries || 0}</h3>
-          </div>
-        </div>
-      </div>
 
-      {!isOnline ? (
-        <div className="offline-state">
-          <Navigation size={64} className="text-muted" />
-          <h2>You are offline</h2>
-          <p>Go online to start receiving delivery requests.</p>
-        </div>
-      ) : (
-        <div className="dashboard-layout">
-          <div className="dashboard-main">
-            {/* Active Deliveries */}
-            {activeDeliveries.length > 0 && (
-              <div className="dashboard-card mb-4">
-                <div className="card-header">
-                  <h3>Active Deliveries</h3>
-                  <span className="badge badge-primary">{activeDeliveries.length}</span>
+        <nav className="sidebar-nav">
+          <div 
+            className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => setActiveTab('dashboard')}
+          >
+            <LayoutDashboard size={20} />
+            <span>Dashboard</span>
+          </div>
+          <div 
+            className={`nav-item ${activeTab === 'orders' ? 'active' : ''}`}
+            onClick={() => setActiveTab('orders')}
+          >
+            <Package size={20} />
+            <span>Orders</span>
+          </div>
+          <div 
+            className={`nav-item ${activeTab === 'earnings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('earnings')}
+          >
+            <IndianRupee size={20} />
+            <span>Earnings</span>
+          </div>
+          <div 
+            className={`nav-item ${activeTab === 'notifications' ? 'active' : ''}`}
+            onClick={() => setActiveTab('notifications')}
+          >
+            <Bell size={20} />
+            <span>Notifications</span>
+            {unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>}
+          </div>
+          <div 
+            className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`}
+            onClick={() => setActiveTab('profile')}
+          >
+            <User size={20} />
+            <span>Profile</span>
+          </div>
+          <div className="nav-item logout-nav-item" onClick={handleLogout} style={{ marginTop: '20px', color: '#ef4444' }}>
+            <LogOut size={20} />
+            <span>Logout</span>
+          </div>
+        </nav>
+      </aside>
+
+      {/* Main Content */}
+      <main className="driver-main">
+        <header className="main-header">
+          <div className="header-title">
+            <h1>
+              {activeTab === 'dashboard' && 'Dashboard'}
+              {activeTab === 'orders' && 'My Orders'}
+              {activeTab === 'earnings' && 'Earnings'}
+              {activeTab === 'notifications' && 'Notifications'}
+              {activeTab === 'profile' && 'My Profile'}
+            </h1>
+            <p>
+              {activeTab === 'dashboard' && `Welcome back, ${user?.name?.split(' ')[0] || 'Arjun'}`}
+              {activeTab === 'orders' && `${orders.length} orders found`}
+              {activeTab === 'earnings' && 'Track your delivery income'}
+              {activeTab === 'notifications' && `${unreadCount} unread`}
+              {activeTab === 'profile' && 'Manage your account details'}
+            </p>
+          </div>
+          <div className="header-actions">
+            {activeTab === 'notifications' && (
+              <button className="mark-read-btn" onClick={markAllRead}>
+                <CheckCircle2 size={18} />
+                <span>Mark all read</span>
+              </button>
+            )}
+            <button 
+              className={`go-online-btn ${isOnline ? 'online' : ''}`}
+              onClick={toggleStatus}
+            >
+              <Power size={18} />
+              {isOnline ? 'Go Offline' : 'Go Online'}
+            </button>
+          </div>
+        </header>
+
+        {activeTab === 'dashboard' && (
+          <>
+            {/* Stats Grid */}
+            <section className="stats-grid">
+              <div className="dashboard-card">
+                <div className="card-top">
+                  <span className="card-label">Today's Earnings</span>
+                  <CircleDollarSign size={20} className="card-icon text-green" />
                 </div>
-                <div className="delivery-list">
-                  {activeDeliveries.map(order => (
-                    <div key={order.id} className="delivery-card active">
-                      <div className="delivery-header">
-                        <div>
-                          <p className="delivery-id">Order #{order.id.slice(0,8).toUpperCase()}</p>
-                          <OrderStatusBadge status={order.status} />
-                        </div>
-                        <h3 className="delivery-amount">₹{order.total_amount}</h3>
-                      </div>
-                      
-                      <div className="delivery-route">
-                        <div className="route-point">
-                          <StoreIcon />
-                          <div className="route-info">
-                            <p className="route-label">Pickup</p>
-                            <p className="route-name">{order.restaurant_name}</p>
-                            <p className="route-address">{order.restaurant_address}</p>
-                          </div>
-                        </div>
-                        <div className="route-line" />
-                        <div className="route-point">
-                          <UserIcon />
-                          <div className="route-info">
-                            <p className="route-label">Drop-off</p>
-                            <p className="route-name">{order.customer_name} ({order.customer_phone})</p>
-                            <p className="route-address">{order.delivery_address}</p>
-                          </div>
-                        </div>
-                      </div>
+                <div className="card-value">₹{stats.todayEarnings}</div>
+              </div>
 
-                      <div className="delivery-actions">
-                        {order.status === 'confirmed' && (
-                          <button className="btn btn-primary" onClick={() => updateOrderStatus(order.id, 'preparing')}>
-                            At Restaurant (Preparing)
-                          </button>
-                        )}
-                        {order.status === 'preparing' && (
-                          <button className="btn btn-primary" onClick={() => updateOrderStatus(order.id, 'out_for_delivery')}>
-                            Picked Up (Out for delivery)
-                          </button>
-                        )}
-                        {order.status === 'out_for_delivery' && (
-                          <button className="btn btn-primary" style={{background: 'var(--accent-green)'}} onClick={() => updateOrderStatus(order.id, 'delivered')}>
-                            Mark as Delivered
-                          </button>
-                        )}
+              <div className="dashboard-card">
+                <div className="card-top">
+                  <span className="card-label">This Week</span>
+                  <TrendingUp size={20} className="card-icon text-orange" />
+                </div>
+                <div className="card-value">₹{stats.weekEarnings}</div>
+              </div>
+
+              <div className="dashboard-card">
+                <div className="card-top">
+                  <span className="card-label">Total Deliveries</span>
+                  <Package size={20} className="card-icon text-blue" />
+                </div>
+                <div className="card-value">{stats.totalDeliveries}</div>
+              </div>
+
+              <div className="dashboard-card">
+                <div className="card-top">
+                  <span className="card-label">Active Orders</span>
+                  <Package size={20} className="card-icon text-purple" />
+                </div>
+                <div className="card-value">{stats.activeOrders}</div>
+              </div>
+
+              <div className="dashboard-card">
+                <div className="card-top">
+                  <span className="card-label">Rating</span>
+                  <Star size={20} className="card-icon text-yellow" />
+                </div>
+                <div className="card-value">{stats.rating} <span style={{fontSize: '1rem', color: '#666'}}>★</span></div>
+              </div>
+
+              <div className="dashboard-card">
+                <div className="card-top">
+                  <span className="card-label">This Month</span>
+                  <IndianRupee size={20} className="card-icon text-orange" />
+                </div>
+                <div className="card-value">₹{stats.monthEarnings}</div>
+              </div>
+            </section>
+
+            {/* Earnings Breakdown */}
+            <section className="breakdown-card">
+              <div className="breakdown-header">
+                <h3>Earnings Breakdown</h3>
+              </div>
+              <div className="breakdown-row">
+                <span className="breakdown-label">Average per Delivery</span>
+                <span className="breakdown-value">₹{stats.avgPerDelivery}</span>
+              </div>
+              <div className="breakdown-row">
+                <span className="breakdown-label">Total Earnings</span>
+                <span className="breakdown-value">₹{stats.totalEarningsBreakdown}</span>
+              </div>
+              <div className="breakdown-row">
+                <span className="breakdown-label">Total Deliveries</span>
+                <span className="breakdown-value">{stats.totalDeliveriesBreakdown}</span>
+              </div>
+            </section>
+          </>
+        )}
+
+        {activeTab === 'orders' && (
+          <section className="orders-list">
+            {orders.map(order => (
+              <div key={order.id} className={`order-card ${order.expanded ? 'expanded' : ''}`}>
+                <div className="order-header" onClick={() => toggleOrderExpand(order.id)}>
+                  <div className="order-info">
+                    <span className="order-id">{order.id}</span>
+                    <h3 className="order-restaurant">{order.restaurant}</h3>
+                  </div>
+                  <div className="order-status-wrapper">
+                    <span className={`order-status-badge ${order.status.toLowerCase().replace(/ /g, '-')}`}>
+                      {order.status}
+                    </span>
+                    {order.expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                  </div>
+                </div>
+
+                {order.expanded && (
+                  <div className="order-details animate-fade-in">
+                    <div className="details-grid">
+                      <div className="detail-item">
+                        <span className="detail-label">Pickup</span>
+                        <div className="detail-value">
+                          <MapPin size={16} className="text-orange" />
+                          <span>{order.pickup}</span>
+                        </div>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Delivery</span>
+                        <div className="detail-value">
+                          <MapPin size={16} className="text-green" />
+                          <span>{order.delivery}</span>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Available Orders */}
-            <div className="dashboard-card">
-              <div className="card-header">
-                <h3>New Requests</h3>
-                <span className="badge badge-green">{availableOrders.length}</span>
-              </div>
-              
-              {availableOrders.length === 0 ? (
-                <div className="empty-state">
-                  <p>No new delivery requests right now.</p>
-                </div>
-              ) : (
-                <div className="delivery-list">
-                  {availableOrders.map(order => (
-                    <div key={order.id} className="delivery-card">
-                      <div className="delivery-header">
-                        <div>
-                          <p className="delivery-id">Order #{order.id.slice(0,8).toUpperCase()}</p>
-                          <p className="delivery-restaurant">{order.restaurant_name}</p>
+                    
+                    <div className="details-footer">
+                      <div className="customer-info">
+                        <div className="info-segment">
+                          <User size={16} />
+                          <span>{order.customer}</span>
                         </div>
-                        <div className="text-right">
-                          <h3 className="delivery-fee">₹{order.delivery_fee || 29}</h3>
-                          <p className="delivery-dist">~3.2 km</p>
+                        <div className="info-segment">
+                          <Phone size={16} />
+                          <span>{order.phone}</span>
                         </div>
                       </div>
-                      <div className="delivery-actions">
-                        <button className="btn btn-primary w-full" onClick={() => acceptOrder(order.id)}>
-                          Accept Delivery
+                      <div className="order-fee">
+                        ₹{order.fee} fee
+                      </div>
+                    </div>
+
+                    {order.status === 'On The Way' && (
+                      <div className="order-actions-row">
+                        <button 
+                          className="deliver-otp-btn"
+                          onClick={() => openOtpModal(order.id)}
+                        >
+                          Deliver (OTP)
                         </button>
                       </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </section>
+        )}
+
+        {activeTab === 'earnings' && (
+          <div className="earnings-view">
+            {/* Summary Cards */}
+            <div className="earnings-summary-grid">
+              <div className="dashboard-card">
+                <div className="card-top">
+                  <span className="card-label">Today</span>
+                  <CircleDollarSign size={18} className="card-icon text-green" />
                 </div>
-              )}
+                <div className="card-value">₹75</div>
+              </div>
+              <div className="dashboard-card">
+                <div className="card-top">
+                  <span className="card-label">This Week</span>
+                  <TrendingUp size={18} className="card-icon text-orange" />
+                </div>
+                <div className="card-value">₹75</div>
+              </div>
+              <div className="dashboard-card">
+                <div className="card-top">
+                  <span className="card-label">This Month</span>
+                  <BarChart3 size={18} className="card-icon text-blue" />
+                </div>
+                <div className="card-value">₹75</div>
+              </div>
+              <div className="dashboard-card">
+                <div className="card-top">
+                  <span className="card-label">Total</span>
+                  <Package size={18} className="card-icon text-purple" />
+                </div>
+                <div className="card-value">₹75</div>
+              </div>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="filter-tabs">
+              {['Today', 'This Week', 'This Month', 'All Time'].map(filter => (
+                <button 
+                  key={filter}
+                  className={`filter-tab ${earningsFilter === filter ? 'active' : ''}`}
+                  onClick={() => setEarningsFilter(filter)}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+
+            {/* Earnings History */}
+            <div className="breakdown-card earnings-history-card">
+              <div className="breakdown-header history-header">
+                <h3>Earnings History</h3>
+                <span className="total-label">Total: <span className="text-orange">₹75</span></span>
+              </div>
+              <div className="history-list">
+                {orders.filter(o => o.status === 'Delivered').map(order => (
+                  <div key={order.id} className="history-item">
+                    <div className="history-info">
+                      <span className="history-order-id">{order.id}</span>
+                      <span className="history-date">{order.date}</span>
+                    </div>
+                    <div className="history-amount text-green">
+                      + ₹{order.fee}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-          
-          <div className="dashboard-sidebar">
-            <div className="dashboard-card">
-              <div className="card-header">
-                <h3>Profile</h3>
+        )}
+
+        {activeTab === 'notifications' && (
+          <section className="notifications-list">
+            {notifications.map(notif => (
+              <div key={notif.id} className={`notification-card ${notif.unread ? 'unread' : ''}`}>
+                <div className={`notif-icon-box ${notif.type}`}>
+                  <Package size={20} />
+                </div>
+                <div className="notif-content">
+                  <div className="notif-header">
+                    <h3 className="notif-title">
+                      {notif.title}
+                      {notif.unread && <span className="unread-dot"></span>}
+                    </h3>
+                  </div>
+                  <p className="notif-message">{notif.message}</p>
+                  <span className="notif-time">{notif.time}</span>
+                </div>
               </div>
-              <div className="driver-profile-mini">
-                <div className="dp-avatar">{user.name.charAt(0)}</div>
-                <h4>{user.name}</h4>
-                <p>★ {stats?.rating?.toFixed(1) || '5.0'} Rating</p>
-                <p>{user.phone}</p>
+            ))}
+          </section>
+        )}
+
+        {activeTab === 'profile' && (
+          <section className="profile-view">
+            {/* Profile Summary Card */}
+            <div className="profile-summary-card">
+              <div className="profile-main-info">
+                <div className="profile-avatar-box">
+                  <User size={40} color="#ff5200" />
+                </div>
+                <div className="profile-name-email">
+                  <h3>{profileData.fullName}</h3>
+                  <p>{profileData.email}</p>
+                </div>
+                <div className="profile-badges">
+                  <span className="badge-approved">Approved</span>
+                  <div className="profile-rating">
+                    <Star size={14} fill="#F59E0B" color="#F59E0B" />
+                    <span>4.8</span>
+                  </div>
+                </div>
               </div>
+              <div className="profile-stats-row">
+                <div className="p-stat-item">
+                  <span className="p-stat-value">142</span>
+                  <span className="p-stat-label">Deliveries</span>
+                </div>
+                <div className="p-stat-item">
+                  <span className="p-stat-value">{profileData.vehicleType}</span>
+                  <span className="p-stat-label">Vehicle</span>
+                </div>
+                <div className="p-stat-item">
+                  <span className="p-stat-value">{profileData.vehicleNumber}</span>
+                  <span className="p-stat-label">Reg. No.</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Edit Profile Form */}
+            <div className="profile-form-container">
+              <div className="form-section-header">
+                <h3>EDIT PROFILE</h3>
+              </div>
+              <form className="profile-form" onSubmit={handleProfileUpdate}>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Full Name</label>
+                    <input 
+                      type="text" 
+                      value={profileData.fullName} 
+                      onChange={(e) => setProfileData({...profileData, fullName: e.target.value})}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Phone</label>
+                    <input 
+                      type="text" 
+                      value={profileData.phone} 
+                      onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+                    />
+                  </div>
+                  <div className="form-group full-width">
+                    <label>Address</label>
+                    <input 
+                      type="text" 
+                      value={profileData.address} 
+                      onChange={(e) => setProfileData({...profileData, address: e.target.value})}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Emergency Contact</label>
+                    <input 
+                      type="text" 
+                      value={profileData.emergencyContact} 
+                      onChange={(e) => setProfileData({...profileData, emergencyContact: e.target.value})}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Vehicle Number</label>
+                    <input 
+                      type="text" 
+                      value={profileData.vehicleNumber} 
+                      onChange={(e) => setProfileData({...profileData, vehicleNumber: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <button type="submit" className="save-btn">Save Changes</button>
+              </form>
+            </div>
+
+            {/* Change Password Form */}
+            <div className="profile-form-container">
+              <div className="form-section-header">
+                <Lock size={16} />
+                <h3>CHANGE PASSWORD</h3>
+              </div>
+              <form className="profile-form" onSubmit={handlePasswordUpdate}>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Current Password</label>
+                    <input type="password" placeholder="••••••••" />
+                  </div>
+                  <div className="form-group">
+                    <label>New Password</label>
+                    <input type="password" placeholder="••••••••" />
+                  </div>
+                </div>
+                <button type="submit" className="update-password-btn">Update Password</button>
+              </form>
+            </div>
+          </section>
+        )}
+      </main>
+
+      {/* OTP Modal */}
+      {showOtpModal && (
+        <div className="modal-overlay">
+          <div className="otp-modal animate-fade-in">
+            <button className="modal-close" onClick={() => setShowOtpModal(false)}>
+              <X size={24} />
+            </button>
+            
+            <div className="modal-header">
+              <div className="success-icon-circle">
+                <CheckCircle2 size={28} color="#10B981" />
+              </div>
+              <h2>Verify Delivery OTP</h2>
+            </div>
+
+            <div className="modal-body">
+              <p>Enter the 4-digit OTP provided by the customer for order <strong>{selectedOrderId}</strong></p>
+              
+              <div className="otp-input-wrapper">
+                <input 
+                  type="text" 
+                  maxLength="4"
+                  placeholder="Enter 4-digit OTP"
+                  value={otpInput}
+                  onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
+                  className="otp-input-field"
+                />
+              </div>
+
+              <button 
+                className="verify-btn"
+                onClick={handleVerifyDelivery}
+              >
+                Verify & Complete Delivery
+              </button>
             </div>
           </div>
         </div>
       )}
     </div>
   );
-}
-
-function StoreIcon() {
-  return <div className="route-icon pickup"><MapPin size={16} /></div>;
-}
-function UserIcon() {
-  return <div className="route-icon dropoff"><MapPin size={16} /></div>;
 }

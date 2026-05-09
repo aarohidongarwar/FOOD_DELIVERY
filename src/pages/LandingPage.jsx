@@ -266,7 +266,7 @@ export default function LandingPage() {
               </div>
               <h3 className="lp-role-title">Drivers</h3>
               <p className="lp-role-desc">Earn money on your own schedule by delivering delicious food.</p>
-              <Link to="/onboarding" className="lp-cta-text">Drive with us <ChevronRight size={16} /></Link>
+              <Link to="/rider/login" className="lp-cta-text">Drive with us <ChevronRight size={16} /></Link>
             </motion.div>
 
             <motion.div className="lp-role-card" {...fadeInUp} transition={{ delay: 0.3 }}>

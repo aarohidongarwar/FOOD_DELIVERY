@@ -32,7 +32,7 @@ export default function Onboarding() {
       icon: <Truck size={40} />,
       color: '#4CAF50',
       bg: '#E8F5E9',
-      link: '/login?role=driver',
+      link: '/rider/login',
       buttonText: 'Join Fleet'
     },
     {

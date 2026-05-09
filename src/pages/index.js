@@ -13,3 +13,5 @@ export { default as Onboarding } from './Onboarding';
 export { default as PartnershipType } from './PartnershipType';
 export { default as RestaurantRegistration } from './RestaurantRegistration';
 export { default as GroceryRegistration } from './GroceryRegistration';
+export { default as RiderLogin } from './RiderLogin';
+export { default as RiderRegistration } from './RiderRegistration';

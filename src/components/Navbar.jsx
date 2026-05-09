@@ -59,8 +59,24 @@ export default function Navbar({ onCartClick }) {
     setMobileOpen(false);
   };
 
-  if (['/register-restaurant', '/register-grocery'].includes(location.pathname)) {
+  const isMinimal = ['/rider/login', '/rider/register', '/register-restaurant', '/register-grocery'].includes(location.pathname);
+  const isDarkPage = ['/rider/login', '/rider/register'].includes(location.pathname);
+
+  if (location.pathname === '/driver') {
     return null;
+  }
+
+  if (isMinimal) {
+    return (
+      <nav className="navbar navbar-minimal">
+        <div className="navbar-inner container">
+          <Link to="/" className="navbar-logo">
+            <span className="logo-icon">🍕</span>
+            <span className="logo-text">Quick<span className="logo-accent">Bite</span></span>
+          </Link>
+        </div>
+      </nav>
+    );
   }
 
   return (

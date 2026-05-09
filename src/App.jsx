@@ -8,16 +8,18 @@ import { Navbar, Footer, CartDrawer, ProtectedRoute, SplashScreen, ScrollToTop }
 // Pages
 import { 
   Home, Restaurants, RestaurantDetail, Cart, OrderTracking, 
-  MyOrders, Login, Profile, AdminDashboard, DriverDashboard, LandingPage, Onboarding, PartnershipType, RestaurantRegistration, GroceryRegistration 
+  MyOrders, Login, Profile, AdminDashboard, DriverDashboard, LandingPage, Onboarding, PartnershipType, RestaurantRegistration, GroceryRegistration, RiderLogin, RiderRegistration 
 } from './pages'
 
-// Routes where Footer should be hidden
-const HIDE_FOOTER_ROUTES = ['/onboarding', '/partnership-type', '/register-restaurant', '/register-grocery'];
+// Routes where UI elements should be hidden
+const HIDE_FOOTER_ROUTES = ['/onboarding', '/partnership-type', '/register-restaurant', '/register-grocery', '/rider/login', '/rider/register', '/driver'];
+const MINIMAL_LAYOUT_ROUTES = ['/rider/login', '/rider/register', '/register-restaurant', '/register-grocery', '/driver'];
 
 function AppLayout() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const location = useLocation();
   const hideFooter = HIDE_FOOTER_ROUTES.includes(location.pathname);
+  const isMinimal = MINIMAL_LAYOUT_ROUTES.includes(location.pathname);
 
   return (
     <>
@@ -36,6 +38,8 @@ function AppLayout() {
           <Route path="/restaurant/:id" element={<RestaurantDetail onCartClick={() => setIsCartOpen(true)} />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/rider/login" element={<RiderLogin />} />
+          <Route path="/rider/register" element={<RiderRegistration />} />
           
           {/* Protected Routes (Any user) */}
           <Route element={<ProtectedRoute />}>
