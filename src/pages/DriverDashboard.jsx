@@ -21,11 +21,55 @@ import {
   CheckCircle2,
   Lock,
   Mail,
-  X
+  X,
+  Navigation
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import { io } from 'socket.io-client';
 import useAuthStore from '../stores/authStore';
 import api from '../api';
+import 'leaflet/dist/leaflet.css';
 import './DriverDashboard.css';
+
+// Fix Leaflet icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+const driverIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/3135/3135755.png',
+  iconSize: [38, 38],
+  iconAnchor: [19, 38],
+  popupAnchor: [0, -38]
+});
+
+const restaurantIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/3170/3170733.png',
+  iconSize: [38, 38],
+  iconAnchor: [19, 38],
+  popupAnchor: [0, -38]
+});
+
+const customerIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/1077/1077114.png',
+  iconSize: [38, 38],
+  iconAnchor: [19, 38],
+  popupAnchor: [0, -38]
+});
+
+function MapUpdater({ lat, lon }) {
+  const map = useMap();
+  useEffect(() => {
+    if (lat && lon) {
+      map.setView([lat, lon], 14);
+    }
+  }, [lat, lon, map]);
+  return null;
+}
 
 export default function DriverDashboard() {
   const { user, logout } = useAuthStore();
@@ -34,8 +78,10 @@ export default function DriverDashboard() {
   const [earningsFilter, setEarningsFilter] = useState('This Month');
   const [isOnline, setIsOnline] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState('');
   const [otpInput, setOtpInput] = useState('');
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [activeDeliveries, setActiveDeliveries] = useState([]);
+  const [socket, setSocket] = useState(null);
   
   const [stats, setStats] = useState({
     todayEarnings: 75,
@@ -150,7 +196,65 @@ export default function DriverDashboard() {
 
   useEffect(() => {
     fetchStats();
-  }, []);
+    
+    // Connect socket
+    const s = io('/', { path: '/socket.io' });
+    setSocket(s);
+    
+    if (user) {
+      s.emit('register', user.id);
+    }
+
+    return () => s.disconnect();
+  }, [user]);
+
+  // Location Tracking
+  useEffect(() => {
+    let watchId;
+    if (isOnline && navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          const newLoc = { lat: latitude, lon: longitude };
+          setCurrentLocation(newLoc);
+          
+          // Send to API
+          api.post('/delivery/location', newLoc).catch(console.error);
+          
+          // Send to Socket for active orders
+          if (socket && activeDeliveries.length > 0) {
+            activeDeliveries.forEach(order => {
+              socket.emit('driver-location', {
+                orderId: order.id,
+                lat: latitude,
+                lon: longitude
+              });
+            });
+          }
+        },
+        (err) => console.error("Location error:", err),
+        { enableHighAccuracy: true, maximumAge: 10000 }
+      );
+    }
+    return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+    };
+  }, [isOnline, socket, activeDeliveries]);
+
+  const fetchActiveDeliveries = async () => {
+    try {
+      const { data } = await api.get('/delivery/my-deliveries');
+      setActiveDeliveries(data);
+    } catch (err) {
+      console.error("Failed to fetch active deliveries", err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'map' || activeTab === 'orders') {
+      fetchActiveDeliveries();
+    }
+  }, [activeTab]);
 
   const handleLogout = () => {
     logout();
@@ -263,6 +367,13 @@ export default function DriverDashboard() {
           >
             <User size={20} />
             <span>Profile</span>
+          </div>
+          <div 
+            className={`nav-item ${activeTab === 'map' ? 'active' : ''}`}
+            onClick={() => setActiveTab('map')}
+          >
+            <Navigation size={20} />
+            <span>Navigation</span>
           </div>
           <div className="nav-item logout-nav-item" onClick={handleLogout} style={{ marginTop: '20px', color: '#ef4444' }}>
             <LogOut size={20} />
@@ -558,13 +669,13 @@ export default function DriverDashboard() {
                   <span className="badge-approved">Approved</span>
                   <div className="profile-rating">
                     <Star size={14} fill="#F59E0B" color="#F59E0B" />
-                    <span>4.8</span>
+                    <span>{stats.rating}</span>
                   </div>
                 </div>
               </div>
               <div className="profile-stats-row">
                 <div className="p-stat-item">
-                  <span className="p-stat-value">142</span>
+                  <span className="p-stat-value">{stats.totalDeliveries}</span>
                   <span className="p-stat-label">Deliveries</span>
                 </div>
                 <div className="p-stat-item">
@@ -649,6 +760,95 @@ export default function DriverDashboard() {
                 </div>
                 <button type="submit" className="update-password-btn">Update Password</button>
               </form>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'map' && (
+          <section className="map-view">
+            <div className="map-container-card">
+              <div className="map-header-bar">
+                <div className="tracking-status">
+                  <div className={`status-pulse ${isOnline ? 'active' : ''}`}></div>
+                  <span>{isOnline ? 'Live Tracking Active' : 'Go Online to enable tracking'}</span>
+                </div>
+                {activeDeliveries.length > 0 && (
+                  <div className="active-order-badge">
+                    {activeDeliveries.length} Active {activeDeliveries.length === 1 ? 'Order' : 'Orders'}
+                  </div>
+                )}
+              </div>
+              
+              <div className="dashboard-map-wrapper">
+                <MapContainer 
+                  center={currentLocation ? [currentLocation.lat, currentLocation.lon] : [19.0760, 72.8777]} 
+                  zoom={13} 
+                  className="dashboard-leaflet-map"
+                >
+                  <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+                  
+                  {currentLocation && (
+                    <Marker position={[currentLocation.lat, currentLocation.lon]} icon={driverIcon}>
+                      <Popup>You are here</Popup>
+                    </Marker>
+                  )}
+
+                  {activeDeliveries.map(order => (
+                    <div key={order.id}>
+                      {order.restaurant_lat && (
+                        <Marker position={[order.restaurant_lat, order.restaurant_lon]} icon={restaurantIcon}>
+                          <Popup>
+                            <strong>Pickup: {order.restaurant_name}</strong><br/>
+                            Order: {order.id}
+                          </Popup>
+                        </Marker>
+                      )}
+                      {order.delivery_lat && (
+                        <Marker position={[order.delivery_lat, order.delivery_lon]} icon={customerIcon}>
+                          <Popup>
+                            <strong>Delivery: {order.customer_name}</strong><br/>
+                            {order.delivery_address}
+                          </Popup>
+                        </Marker>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {currentLocation && <MapUpdater lat={currentLocation.lat} lon={currentLocation.lon} />}
+                </MapContainer>
+              </div>
+
+              <div className="map-delivery-list">
+                <h3>Current Assignments</h3>
+                {activeDeliveries.length === 0 ? (
+                  <p className="no-assignments">No active orders to display on map.</p>
+                ) : (
+                  <div className="assignment-cards">
+                    {activeDeliveries.map(order => (
+                      <div key={order.id} className="assignment-mini-card">
+                        <div className="mini-card-header">
+                          <span className="mini-id">{order.id}</span>
+                          <span className="mini-status">{order.status}</span>
+                        </div>
+                        <div className="mini-route">
+                          <div className="route-stop">
+                            <div className="dot pickup"></div>
+                            <span>{order.restaurant_name}</span>
+                          </div>
+                          <div className="route-line"></div>
+                          <div className="route-stop">
+                            <div className="dot delivery"></div>
+                            <span>{order.customer_name}</span>
+                          </div>
+                        </div>
+                        <button className="navigate-btn" onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${order.restaurant_lat},${order.restaurant_lon}`, '_blank')}>
+                          Navigate to Pickup
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </section>
         )}
