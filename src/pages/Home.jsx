@@ -2,13 +2,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, MapPin, ChevronRight, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RestaurantCard, RestaurantCardSkeleton } from '../components';
+import { RestaurantCard, RestaurantCardSkeleton, LocationPopup } from '../components';
 import useRestaurantStore from '../stores/restaurantStore';
 import './Home.css';
 
 export default function Home() {
   const { restaurants, fetchRestaurants, loading, cuisines, fetchCuisines } = useRestaurantStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const [userLocation, setUserLocation] = useState(() => {
+    const saved = localStorage.getItem('quickbite_user_location');
+    return saved ? JSON.parse(saved) : null;
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -135,6 +139,8 @@ export default function Home() {
 
   return (
     <div className="home-page">
+      {/* Location Permission Popup */}
+      <LocationPopup onLocationGranted={(loc) => setUserLocation(loc)} />
       {/* Hero Section */}
       <section className="hero-section">
         <div className="container hero-container">
@@ -164,7 +170,7 @@ export default function Home() {
             >
               <div className="location-pin">
                 <MapPin size={20} className="text-primary" />
-                <span>Mumbai</span>
+                <span>{userLocation?.city || 'Set Location'}</span>
               </div>
               <div className="search-divider" />
               <div className="search-input-wrapper">

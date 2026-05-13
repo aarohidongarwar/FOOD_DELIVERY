@@ -1,0 +1,354 @@
+/* ══════════════════════════════════════
+   Location Popup - Swiggy/Zomato Style
+   ══════════════════════════════════════ */
+
+.loc-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9998;
+}
+
+.loc-popup-wrapper {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.loc-popup {
+  background: white;
+  border-radius: 20px;
+  padding: 32px 28px 24px;
+  max-width: 440px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow:
+    0 25px 60px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+.loc-popup::-webkit-scrollbar {
+  width: 4px;
+}
+
+.loc-popup::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 4px;
+}
+
+/* ─── Header ─── */
+.loc-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.loc-header-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #FF5722 0%, #FF9800 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 6px 16px rgba(255, 87, 34, 0.3);
+}
+
+.loc-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1a1a2e;
+  margin: 0 0 2px;
+  letter-spacing: -0.3px;
+}
+
+.loc-subtitle {
+  font-size: 0.88rem;
+  color: #8b8b9e;
+  margin: 0;
+}
+
+/* ─── GPS Button ─── */
+.loc-gps-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1.5px solid #eee;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 12px;
+}
+
+.loc-gps-btn:hover:not(:disabled) {
+  border-color: #FF5722;
+  background: rgba(255, 87, 34, 0.03);
+}
+
+.loc-gps-btn:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.loc-gps-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #FF5722;
+}
+
+.loc-gps-title {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #FF5722;
+  text-align: left;
+}
+
+.loc-gps-sub {
+  display: block;
+  font-size: 0.78rem;
+  color: #9ca3af;
+  margin-top: 1px;
+  text-align: left;
+}
+
+.loc-gps-arrow {
+  color: #ccc;
+  transition: color 0.2s;
+}
+
+.loc-gps-btn:hover .loc-gps-arrow {
+  color: #FF5722;
+}
+
+/* Spinner */
+.loc-spin {
+  animation: locSpin 1s linear infinite;
+}
+
+@keyframes locSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Error ─── */
+.loc-error {
+  font-size: 0.82rem;
+  color: #e53e3e;
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+/* ─── Divider ─── */
+.loc-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.loc-divider::before,
+.loc-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #eee;
+}
+
+.loc-divider span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #bbb;
+  letter-spacing: 1px;
+}
+
+/* ─── Search Box ─── */
+.loc-search-box {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.loc-search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+}
+
+.loc-search-box input {
+  width: 100%;
+  padding: 14px 44px 14px 44px;
+  font-size: 0.95rem;
+  border: 1.5px solid #eee;
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.2s;
+  background: #fafafa;
+  color: #333;
+}
+
+.loc-search-box input:focus {
+  border-color: #FF5722;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(255, 87, 34, 0.08);
+}
+
+.loc-search-box input::placeholder {
+  color: #bbb;
+}
+
+.loc-search-spinner {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #FF5722;
+}
+
+/* ─── Search Results ─── */
+.loc-results {
+  margin-top: 8px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.loc-result-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  background: white;
+  border: none;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-align: left;
+}
+
+.loc-result-item:last-child {
+  border-bottom: none;
+}
+
+.loc-result-item:hover {
+  background: #fff8f5;
+}
+
+.loc-result-pin {
+  color: #FF5722;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.loc-result-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.loc-result-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.loc-result-addr {
+  font-size: 0.78rem;
+  color: #999;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+/* ─── Recent Locations ─── */
+.loc-recent {
+  margin-top: 16px;
+}
+
+.loc-recent-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.loc-recent-icon {
+  color: #bbb;
+}
+
+.loc-recent .loc-result-item {
+  border-radius: 10px;
+  border: 1px solid #f5f5f5;
+  margin-bottom: 6px;
+}
+
+/* ─── Privacy ─── */
+.loc-privacy {
+  font-size: 0.75rem;
+  color: #b0b0b0;
+  text-align: center;
+  margin-top: 20px;
+  line-height: 1.5;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 480px) {
+  .loc-popup-wrapper {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .loc-popup {
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px 20px;
+    max-height: 90vh;
+  }
+
+  .loc-title {
+    font-size: 1.1rem;
+  }
+
+  .loc-header-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+  }
+
+  .loc-header-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .loc-result-addr {
+    max-width: 220px;
+  }
+}
