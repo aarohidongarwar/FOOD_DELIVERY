@@ -10,7 +10,7 @@ export default function RiderLogin() {
     email: '',
     password: ''
   });
-  const { login, loading, error } = useAuthStore();
+  const { login, logout, loading, error } = useAuthStore();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -20,8 +20,15 @@ export default function RiderLogin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await login(formData.email, formData.password);
-      navigate('/driver', { replace: true });
+      const user = await login(formData.email, formData.password);
+      if (user.role === 'driver') {
+        navigate('/driver', { replace: true });
+      } else {
+        // Access denied for non-riders
+        logout();
+        // We need a way to show error since the store error might be cleared or relate to credentials
+        alert('Access Denied. This login is only for Delivery Partners.');
+      }
     } catch (err) {
       // Error is handled by store
     }

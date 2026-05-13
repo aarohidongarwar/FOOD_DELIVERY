@@ -27,10 +27,10 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
-  register: async ({ name, email, password, phone, role }) => {
+  register: async (registrationData) => {
     set({ loading: true, error: null });
     try {
-      const { data } = await api.post('/auth/register', { name, email, password, phone, role });
+      const { data } = await api.post('/auth/register', registrationData);
       localStorage.setItem('quickbite_token', data.token);
       localStorage.setItem('quickbite_user', JSON.stringify(data.user));
       set({ user: data.user, token: data.token, loading: false });

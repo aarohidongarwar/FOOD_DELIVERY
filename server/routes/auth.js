@@ -9,7 +9,11 @@ const router = express.Router();
 // Register
 router.post('/register', (req, res) => {
   try {
-    const { name, email, password, phone, role = 'customer' } = req.body;
+    const { 
+      name, email, password, phone, role = 'customer', address,
+      vehicleType, vehicleNumber, licenseNumber, emergencyContact 
+    } = req.body;
+    
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email and password are required' });
     }
@@ -23,15 +27,24 @@ router.post('/register', (req, res) => {
     const password_hash = bcrypt.hashSync(password, 10);
     
     db.prepare(`
-      INSERT INTO users (id, name, email, password_hash, phone, role)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(id, name, email, password_hash, phone || null, role);
+      INSERT INTO users (id, name, email, password_hash, phone, role, address)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(id, name, email, password_hash, phone || null, role, address || null);
 
-    // If registering as driver, create delivery agent entry
+    // If registering as driver, create delivery agent entry with extra details
     if (role === 'driver') {
       db.prepare(`
-        INSERT INTO delivery_agents (id, user_id, status) VALUES (?, ?, 'available')
-      `).run(uuidv4(), id);
+        INSERT INTO delivery_agents (
+          id, user_id, status, vehicle_type, vehicle_number, license_number, emergency_contact
+        ) VALUES (?, ?, 'available', ?, ?, ?, ?)
+      `).run(
+        uuidv4(), 
+        id, 
+        vehicleType || 'bike', 
+        vehicleNumber || null, 
+        licenseNumber || null, 
+        emergencyContact || null
+      );
     }
 
     const user = db.prepare('SELECT id, name, email, role, phone, avatar_url, address FROM users WHERE id = ?').get(id);

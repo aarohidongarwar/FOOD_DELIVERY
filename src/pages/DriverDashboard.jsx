@@ -130,6 +130,18 @@ export default function DriverDashboard() {
           totalEarningsBreakdown: data.totalEarnings || prev.totalEarningsBreakdown
         }));
         setIsOnline(data.status !== 'offline');
+        
+        // Update profile data with real data from backend
+        setProfileData(prev => ({
+          ...prev,
+          fullName: user?.name || prev.fullName,
+          phone: user?.phone || data.phone || prev.phone,
+          email: user?.email || prev.email,
+          vehicleType: data.vehicle_type || prev.vehicleType,
+          vehicleNumber: data.vehicle_number || prev.vehicleNumber,
+          emergencyContact: data.emergency_contact || prev.emergencyContact,
+          address: user?.address || prev.address
+        }));
       }
     } catch (err) {
       console.error("Failed to fetch stats", err);

@@ -111,6 +111,10 @@ db.exec(`
     current_lon REAL,
     rating REAL DEFAULT 5.0,
     total_deliveries INTEGER DEFAULT 0,
+    vehicle_type TEXT,
+    vehicle_number TEXT,
+    license_number TEXT,
+    emergency_contact TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
@@ -149,5 +153,24 @@ db.exec(`
     FOREIGN KEY (menu_item_id) REFERENCES menu_items(id)
   );
 `);
+
+// Simple migration check for delivery_agents
+const columns = db.prepare('PRAGMA table_info(delivery_agents)').all().map(c => c.name);
+const newColumns = [
+  ['vehicle_type', 'TEXT'],
+  ['vehicle_number', 'TEXT'],
+  ['license_number', 'TEXT'],
+  ['emergency_contact', 'TEXT']
+];
+
+for (const [name, type] of newColumns) {
+  if (!columns.includes(name)) {
+    try {
+      db.prepare(`ALTER TABLE delivery_agents ADD COLUMN ${name} ${type}`).run();
+    } catch (e) {
+      console.warn(`Could not add column ${name}:`, e.message);
+    }
+  }
+}
 
 export default db;
