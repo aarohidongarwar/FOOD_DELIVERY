@@ -6,7 +6,7 @@ export { default as OrderTracking } from './OrderTracking';
 export { default as MyOrders } from './MyOrders';
 export { default as Login } from './Login';
 export { default as Profile } from './Profile';
-export { default as AdminDashboard } from './AdminDashboard';
+export { default as AdminPortal } from './admin/AdminPortal';
 export { default as DriverDashboard } from './DriverDashboard';
 export { default as LandingPage } from './LandingPage';
 export { default as Onboarding } from './Onboarding';

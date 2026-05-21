@@ -171,6 +171,52 @@ export default function Login() {
             </button>
           </p>
         </div>
+
+        {isLogin && (
+          <div className="quick-login-section">
+            <div className="divider">
+              <span>OR QUICK LOGIN AS</span>
+            </div>
+            <div className="quick-login-grid">
+              <button 
+                type="button" 
+                className="btn btn-outline btn-sm"
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, email: 'rahul@example.com', password: 'password123' }));
+                }}
+              >
+                👤 Customer
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-outline btn-sm"
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, email: 'admin@quickbite.com', password: 'password123' }));
+                }}
+              >
+                🛡️ Admin
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-outline btn-sm"
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, email: 'driver1@quickbite.com', password: 'password123' }));
+                }}
+              >
+                🏍️ Driver
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-outline btn-sm"
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, email: 'owner1@quickbite.com', password: 'password123' }));
+                }}
+              >
+                🏪 Owner
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

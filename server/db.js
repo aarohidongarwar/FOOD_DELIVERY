@@ -152,6 +152,22 @@ db.exec(`
     FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
     FOREIGN KEY (menu_item_id) REFERENCES menu_items(id)
   );
+
+  CREATE TABLE IF NOT EXISTS promo_codes (
+    id TEXT PRIMARY KEY,
+    code TEXT UNIQUE NOT NULL,
+    description TEXT,
+    discount_type TEXT DEFAULT 'flat' CHECK(discount_type IN ('flat','percent')),
+    discount_value REAL NOT NULL,
+    min_order REAL DEFAULT 0,
+    max_discount REAL,
+    usage_limit INTEGER,
+    used_count INTEGER DEFAULT 0,
+    valid_from TEXT,
+    valid_until TEXT,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // Simple migration check for delivery_agents

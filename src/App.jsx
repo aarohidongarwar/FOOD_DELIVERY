@@ -8,12 +8,12 @@ import { Navbar, Footer, CartDrawer, ProtectedRoute, SplashScreen, ScrollToTop }
 // Pages
 import { 
   Home, Restaurants, RestaurantDetail, Cart, OrderTracking, 
-  MyOrders, Login, Profile, AdminDashboard, DriverDashboard, LandingPage, Onboarding, PartnershipType, RestaurantRegistration, GroceryRegistration, RiderLogin, RiderRegistration 
+  MyOrders, Login, Profile, AdminPortal, DriverDashboard, LandingPage, Onboarding, PartnershipType, RestaurantRegistration, GroceryRegistration, RiderLogin, RiderRegistration 
 } from './pages'
 
 // Routes where UI elements should be hidden
-const HIDE_FOOTER_ROUTES = ['/onboarding', '/partnership-type', '/register-restaurant', '/register-grocery', '/rider/login', '/rider/register', '/driver'];
-const MINIMAL_LAYOUT_ROUTES = ['/rider/login', '/rider/register', '/register-restaurant', '/register-grocery', '/driver'];
+const HIDE_FOOTER_ROUTES = ['/onboarding', '/partnership-type', '/register-restaurant', '/register-grocery', '/rider/login', '/rider/register', '/driver', '/admin'];
+const MINIMAL_LAYOUT_ROUTES = ['/rider/login', '/rider/register', '/register-restaurant', '/register-grocery', '/driver', '/admin'];
 
 function AppLayout() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -50,7 +50,7 @@ function AppLayout() {
 
           {/* Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin" element={<AdminPortal />} />
           </Route>
 
           {/* Driver Routes */}
