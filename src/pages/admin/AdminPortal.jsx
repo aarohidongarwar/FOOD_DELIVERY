@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import useAuthStore from '../../stores/authStore';
 import {
   LayoutDashboard, ShoppingBag, Truck, Store, Users,
-  IndianRupee, BarChart3, Tag, Menu, X
+  IndianRupee, BarChart3, Tag, Menu, X, Home, LogOut
 } from 'lucide-react';
 import AdminOverview from './AdminOverview';
 import AdminOrders from './AdminOrders';
@@ -27,6 +29,13 @@ const NAV_ITEMS = [
 export default function AdminPortal() {
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
+  const { logout } = useAuthStore();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -65,6 +74,16 @@ export default function AdminPortal() {
             </button>
           ))}
         </nav>
+        <div className="admin-sidebar-footer">
+          <button className="admin-nav-item" onClick={() => navigate('/home')}>
+            <Home />
+            <span>Back to Home</span>
+          </button>
+          <button className="admin-nav-item logout-btn" onClick={handleLogout}>
+            <LogOut />
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
       {/* Content */}
