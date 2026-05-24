@@ -4,31 +4,29 @@ import useAuthStore from '../stores/authStore';
 import './Login.css';
 
 export default function Login() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const params = new URLSearchParams(location.search);
+  const roleParam = params.get('role');
+  const isRestaurantRole = roleParam === 'restaurant';
+  
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     phone: '',
-    role: 'customer'
+    role: ['customer', 'driver', 'restaurant', 'admin'].includes(roleParam) ? roleParam : 'customer'
   });
   
   const { login, register, isAuthenticated, loading, error } = useAuthStore();
-  const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
-    // Pre-select role from query param if available
-    const params = new URLSearchParams(location.search);
-    const roleParam = params.get('role');
-    if (roleParam && ['customer', 'driver', 'restaurant', 'admin'].includes(roleParam)) {
-      setFormData(prev => ({ ...prev, role: roleParam }));
-    }
-
     if (isAuthenticated()) {
       redirectUser(useAuthStore.getState().user);
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, navigate]);
 
   const redirectUser = (user) => {
     if (location.state?.returnTo) {
@@ -134,7 +132,7 @@ export default function Login() {
             />
           </div>
 
-          {!isLogin && (
+          {!isLogin && !isRestaurantRole && (
             <div className="input-group">
               <label>Register As</label>
               <select 
@@ -178,42 +176,57 @@ export default function Login() {
               <span>OR QUICK LOGIN AS</span>
             </div>
             <div className="quick-login-grid">
-              <button 
-                type="button" 
-                className="btn btn-outline btn-sm"
-                onClick={() => {
-                  setFormData(prev => ({ ...prev, email: 'rahul@example.com', password: 'password123' }));
-                }}
-              >
-                👤 Customer
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-outline btn-sm"
-                onClick={() => {
-                  setFormData(prev => ({ ...prev, email: 'admin@quickbite.com', password: 'password123' }));
-                }}
-              >
-                🛡️ Admin
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-outline btn-sm"
-                onClick={() => {
-                  setFormData(prev => ({ ...prev, email: 'driver1@quickbite.com', password: 'password123' }));
-                }}
-              >
-                🏍️ Driver
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-outline btn-sm"
-                onClick={() => {
-                  setFormData(prev => ({ ...prev, email: 'owner1@quickbite.com', password: 'password123' }));
-                }}
-              >
-                🏪 Owner
-              </button>
+              {roleParam === 'admin' ? (
+                <button 
+                  type="button" 
+                  className="btn btn-outline btn-sm"
+                  style={{ gridColumn: 'span 2', justifyContent: 'center' }}
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, email: 'admin@quickbite.com', password: 'password123' }));
+                  }}
+                >
+                  🛡️ Admin
+                </button>
+              ) : (
+                <>
+                  <button 
+                    type="button" 
+                    className="btn btn-outline btn-sm"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, email: 'rahul@example.com', password: 'password123' }));
+                    }}
+                  >
+                    👤 Customer
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-outline btn-sm"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, email: 'admin@quickbite.com', password: 'password123' }));
+                    }}
+                  >
+                    🛡️ Admin
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-outline btn-sm"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, email: 'driver1@quickbite.com', password: 'password123' }));
+                    }}
+                  >
+                    🏍️ Driver
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-outline btn-sm"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, email: 'owner1@quickbite.com', password: 'password123' }));
+                    }}
+                  >
+                    🏪 Owner
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}

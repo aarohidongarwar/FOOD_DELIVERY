@@ -15,3 +15,5 @@ export { default as RestaurantRegistration } from './RestaurantRegistration';
 export { default as GroceryRegistration } from './GroceryRegistration';
 export { default as RiderLogin } from './RiderLogin';
 export { default as RiderRegistration } from './RiderRegistration';
+export { default as RestaurantDashboard } from './RestaurantDashboard';
+

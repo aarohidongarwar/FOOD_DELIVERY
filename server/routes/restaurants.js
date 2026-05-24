@@ -1,6 +1,7 @@
 import express from 'express';
+import { v4 as uuidv4 } from 'uuid';
 import db from '../db.js';
-import { optionalAuth } from '../middleware/auth.js';
+import { optionalAuth, authenticateToken, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -106,6 +107,78 @@ router.get('/meta/cuisines', (req, res) => {
     res.json(cuisines.map(c => c.cuisine_type));
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch cuisines' });
+  }
+});
+
+// Get owner restaurant details
+router.get('/owner/me', authenticateToken, requireRole('restaurant'), (req, res) => {
+  try {
+    const restaurant = db.prepare('SELECT * FROM restaurants WHERE owner_id = ?').get(req.user.id);
+    if (!restaurant) return res.status(404).json({ error: 'Restaurant profile not found' });
+    
+    // Parse registration details if present
+    if (restaurant.registration_details) {
+      try {
+        restaurant.registration_details = JSON.parse(restaurant.registration_details);
+      } catch (e) {
+        restaurant.registration_details = {};
+      }
+    }
+    res.json(restaurant);
+  } catch (err) {
+    console.error('Get owner restaurant error:', err);
+    res.status(500).json({ error: 'Failed to fetch restaurant details' });
+  }
+});
+
+// Create/Register restaurant details
+router.post('/owner/register', authenticateToken, requireRole('restaurant'), (req, res) => {
+  try {
+    const { name, address, cuisine_type, registration_details } = req.body;
+    
+    if (!name || !address) {
+      return res.status(400).json({ error: 'Restaurant name and address are required' });
+    }
+    
+    const existing = db.prepare('SELECT * FROM restaurants WHERE owner_id = ?').get(req.user.id);
+    const regDetailsString = registration_details ? JSON.stringify(registration_details) : null;
+    
+    if (existing) {
+      // Update existing
+      db.prepare(`
+        UPDATE restaurants 
+        SET name = ?, address = ?, cuisine_type = ?, registration_details = ?, updated_at = datetime('now')
+        WHERE owner_id = ?
+      `).run(name, address, cuisine_type || 'General', regDetailsString, req.user.id);
+      
+      const updated = db.prepare('SELECT * FROM restaurants WHERE owner_id = ?').get(req.user.id);
+      if (updated.registration_details) updated.registration_details = JSON.parse(updated.registration_details);
+      return res.json(updated);
+    } else {
+      // Create new
+      const id = uuidv4();
+      db.prepare(`
+        INSERT INTO restaurants (
+          id, owner_id, name, description, address, cuisine_type, 
+          rating, total_ratings, is_active, is_grocery, registration_details
+        ) VALUES (?, ?, ?, ?, ?, ?, 0.0, 0, 0, 0, ?)
+      `).run(
+        id, 
+        req.user.id, 
+        name, 
+        registration_details?.businessType || 'New Restaurant Partner', 
+        address, 
+        cuisine_type || 'General', 
+        regDetailsString
+      );
+      
+      const created = db.prepare('SELECT * FROM restaurants WHERE id = ?').get(id);
+      if (created.registration_details) created.registration_details = JSON.parse(created.registration_details);
+      return res.status(201).json(created);
+    }
+  } catch (err) {
+    console.error('Register owner restaurant error:', err);
+    res.status(500).json({ error: 'Failed to register/update restaurant' });
   }
 });
 

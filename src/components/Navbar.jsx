@@ -16,7 +16,7 @@ export default function Navbar({ onCartClick }) {
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef(null);
 
-  const isLandingPage = ['/', '/onboarding', '/partnership-type', '/register-restaurant', '/register-grocery'].includes(location.pathname);
+  const isLandingPage = ['/', '/home', '/onboarding', '/partnership-type', '/register-restaurant', '/register-grocery'].includes(location.pathname);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -59,7 +59,7 @@ export default function Navbar({ onCartClick }) {
     setMobileOpen(false);
   };
 
-  const isMinimal = ['/rider/login', '/rider/register', '/register-restaurant', '/register-grocery'].includes(location.pathname);
+  const isMinimal = ['/login', '/rider/login', '/rider/register', '/register-restaurant', '/register-grocery'].includes(location.pathname);
   const isDarkPage = ['/rider/login', '/rider/register'].includes(location.pathname);
 
   if (location.pathname === '/driver') {

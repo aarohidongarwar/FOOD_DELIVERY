@@ -1,0 +1,157 @@
+/* RestaurantDashboard.css */
+
+/* Overall page layout */
+.restaurant-dashboard {
+  min-height: calc(100vh - 80px); /* account for navbar/footer */
+  padding: 2rem 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  color: #e0e0e0;
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+}
+
+.dashboard-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 2rem;
+  background: linear-gradient(45deg, #ff6b6b, #feca57);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Loading & error states */
+.dashboard-loading,
+.dashboard-error {
+  font-size: 1.25rem;
+  text-align: center;
+  margin-top: 4rem;
+}
+
+/* Under Review view */
+.under-review {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.under-review h2 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: #ffdd59;
+}
+
+.under-review p {
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+
+/* Onboarding stepper */
+.stepper {
+  display: flex;
+  justify-content: space-between;
+  margin: 2rem 0;
+  position: relative;
+}
+
+.stepper::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 5%;
+  right: 5%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
+.step {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  flex: 1;
+}
+
+.step-index {
+  width: 36px;
+  height: 36px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: #555;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  transition: background 0.3s, color 0.3s;
+}
+
+.step-label {
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+  color: #bbb;
+}
+
+.step.active .step-index {
+  background: #ff6b6b;
+  color: #fff;
+}
+
+.step.completed .step-index {
+  background: #4cd137;
+  color: #fff;
+}
+
+.step.completed .step-label {
+  color: #4cd137;
+}
+
+.step.active .step-label {
+  color: #ff6b6b;
+}
+
+/* Continue button */
+.continue-button {
+  display: block;
+  width: max-content;
+  margin: 1.5rem auto;
+  padding: 0.75rem 2rem;
+  background: linear-gradient(45deg, #ff6b6b, #feca57);
+  border: none;
+  border-radius: 8px;
+  color: #1a1a2e;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.continue-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 107, 107, 0.6);
+}
+
+/* Media queries for responsiveness */
+@media (max-width: 768px) {
+  .dashboard-title {
+    font-size: 2rem;
+  }
+
+  .stepper {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .stepper::before {
+    display: none;
+  }
+
+  .step {
+    margin-bottom: 1.5rem;
+  }
+}

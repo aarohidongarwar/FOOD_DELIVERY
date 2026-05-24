@@ -189,4 +189,15 @@ for (const [name, type] of newColumns) {
   }
 }
 
+// Simple migration check for restaurants
+const restColumns = db.prepare('PRAGMA table_info(restaurants)').all().map(c => c.name);
+if (!restColumns.includes('registration_details')) {
+  try {
+    db.prepare("ALTER TABLE restaurants ADD COLUMN registration_details TEXT").run();
+    console.log("Added column 'registration_details' to 'restaurants' table.");
+  } catch (e) {
+    console.warn("Could not add column 'registration_details' to 'restaurants' table:", e.message);
+  }
+}
+
 export default db;

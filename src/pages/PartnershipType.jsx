@@ -10,7 +10,7 @@ export default function PartnershipType() {
       title: 'Restaurant Partner',
       description: 'Run a kitchen, cloud brand, or dine-in restaurant? Reach diners across the city.',
       icon: <Utensils size={32} />,
-      link: '/register-restaurant'
+      link: '/login?role=restaurant'
     },
     {
       id: 'grocery',
