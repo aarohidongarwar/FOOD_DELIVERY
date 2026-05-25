@@ -108,7 +108,7 @@ export default function Navbar({ onCartClick }) {
             <div className="lp-nav-actions">
               {/* Partner with us link removed as requested */}
               {/* Sign in button removed as requested */}
-              {user && (
+              {user ? (
                 <div className="nav-profile" ref={dropdownRef}>
                   <button className="nav-profile-btn" onClick={() => setShowDropdown(!showDropdown)}>
                     <div className="nav-avatar">{user.name?.charAt(0).toUpperCase()}</div>
@@ -124,6 +124,10 @@ export default function Navbar({ onCartClick }) {
                     </div>
                   )}
                 </div>
+              ) : (
+                location.pathname === '/home' && (
+                  <Link to="/login" className="btn btn-primary btn-sm">Login</Link>
+                )
               )}
             </div>
           ) : (
@@ -212,10 +216,12 @@ export default function Navbar({ onCartClick }) {
               </button>
             </>
           ) : (
-            <>
-              <div className="mobile-divider" />
-              <Link to="/login" className="mobile-link mobile-login">Login / Sign Up</Link>
-            </>
+            (!isLandingPage || location.pathname === '/home') && (
+              <>
+                <div className="mobile-divider" />
+                <Link to="/login" className="mobile-link mobile-login">Login / Sign Up</Link>
+              </>
+            )
           )}
         </div>
       )}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ArrowLeft, Truck } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import './RiderLogin.css';
 
@@ -107,6 +107,24 @@ export default function RiderLogin() {
 
           <div className="rider-login-footer">
             <p>New rider? <Link to="/rider/register">Register here</Link></p>
+          </div>
+
+          <div className="quick-login-section">
+            <div className="divider">
+              <span>OR QUICK LOGIN AS</span>
+            </div>
+            <div className="quick-login-grid">
+              <button 
+                type="button" 
+                className="btn btn-outline btn-sm"
+                style={{ gridColumn: 'span 2', justifyContent: 'center', gap: '8px', fontSize: '1rem', padding: '10px 16px', fontWeight: '600' }}
+                onClick={() => {
+                  setFormData({ email: 'driver1@quickbite.com', password: 'password123' });
+                }}
+              >
+                <Truck size={18} style={{ color: '#FF5722', strokeWidth: 2.5 }} /> Delivery Partner
+              </button>
+            </div>
           </div>
         </motion.div>
       </div>

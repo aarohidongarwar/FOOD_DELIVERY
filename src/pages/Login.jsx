@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { ArrowLeft, User } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import './Login.css';
 
@@ -63,6 +64,14 @@ export default function Login() {
 
   return (
     <div className="auth-page">
+      {roleParam === 'admin' && (
+        <div style={{ width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'flex-start' }}>
+          <Link to="/" className="back-link">
+            <ArrowLeft size={18} />
+            <span>Back to Home</span>
+          </Link>
+        </div>
+      )}
       <div className="auth-container animate-fade-in-up">
         <div className="auth-header">
           <div className="auth-logo">
@@ -188,44 +197,16 @@ export default function Login() {
                   🛡️ Admin
                 </button>
               ) : (
-                <>
-                  <button 
-                    type="button" 
-                    className="btn btn-outline btn-sm"
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, email: 'rahul@example.com', password: 'password123' }));
-                    }}
-                  >
-                    👤 Customer
-                  </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-outline btn-sm"
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, email: 'admin@quickbite.com', password: 'password123' }));
-                    }}
-                  >
-                    🛡️ Admin
-                  </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-outline btn-sm"
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, email: 'driver1@quickbite.com', password: 'password123' }));
-                    }}
-                  >
-                    🏍️ Driver
-                  </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-outline btn-sm"
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, email: 'owner1@quickbite.com', password: 'password123' }));
-                    }}
-                  >
-                    🏪 Owner
-                  </button>
-                </>
+                <button 
+                  type="button" 
+                  className="btn btn-outline btn-sm"
+                  style={{ gridColumn: 'span 2', justifyContent: 'center', gap: '8px', fontSize: '1rem', padding: '10px 16px', fontWeight: '600' }}
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, email: 'rahul@example.com', password: 'password123' }));
+                  }}
+                >
+                  <User size={18} style={{ color: '#5E35B1', strokeWidth: 2.5 }} /> Customer
+                </button>
               )}
             </div>
           </div>
