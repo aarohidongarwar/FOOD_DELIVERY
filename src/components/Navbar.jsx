@@ -80,6 +80,7 @@ export default function Navbar({ onCartClick }) {
   }
 
   const isDashboard = ['/restaurant-dashboard', '/admin'].includes(location.pathname);
+  const isCustomerPortal = !user || user.role === 'customer';
 
   return (
     <nav className={`navbar ${scrolled ? 'navbar-scrolled' : ''} ${isLandingPage ? 'navbar-landing' : ''} ${isDashboard ? 'navbar-dashboard' : ''}`}>
@@ -91,7 +92,7 @@ export default function Navbar({ onCartClick }) {
         </Link>
 
         {/* Search - Hidden on Landing Page */}
-        {!isLandingPage && (
+        {!isLandingPage && isCustomerPortal && (
           <form className="navbar-search" onSubmit={handleSearch}>
             <Search size={18} className="search-icon" />
             <input
@@ -134,16 +135,20 @@ export default function Navbar({ onCartClick }) {
             </div>
           ) : (
             <>
-              <Link to="/restaurants" className="nav-link">
-                <MapPin size={18} />
-                <span>Restaurants</span>
-              </Link>
+              {isCustomerPortal && (
+                <Link to="/restaurants" className="nav-link">
+                  <MapPin size={18} />
+                  <span>Restaurants</span>
+                </Link>
+              )}
               {user?.role === 'admin' && <Link to="/admin" className="nav-link"><LayoutDashboard size={18} /><span>Dashboard</span></Link>}
               {user?.role === 'driver' && <Link to="/driver" className="nav-link"><Truck size={18} /><span>Deliveries</span></Link>}
-              <button className="nav-cart-btn" onClick={onCartClick} id="cart-button" aria-label="Open cart">
-                <ShoppingCart size={22} />
-                {itemCount > 0 && <span className="cart-badge">{itemCount}</span>}
-              </button>
+              {isCustomerPortal && (
+                <button className="nav-cart-btn" onClick={onCartClick} id="cart-button" aria-label="Open cart">
+                  <ShoppingCart size={22} />
+                  {itemCount > 0 && <span className="cart-badge">{itemCount}</span>}
+                </button>
+              )}
               {user ? (
                 <div className="nav-profile" ref={dropdownRef}>
                   <button className="nav-profile-btn" onClick={() => setShowDropdown(!showDropdown)}>
@@ -170,7 +175,7 @@ export default function Navbar({ onCartClick }) {
         {/* ── Mobile Right Actions ── */}
         <div className="navbar-mobile-actions">
           {/* Cart icon on mobile (non-landing only) */}
-          {!isLandingPage && (
+          {!isLandingPage && isCustomerPortal && (
             <button className="mobile-cart-btn nav-cart-btn" onClick={onCartClick} aria-label="Open cart">
               <ShoppingCart size={22} />
               {itemCount > 0 && <span className="cart-badge">{itemCount}</span>}
@@ -199,7 +204,7 @@ export default function Navbar({ onCartClick }) {
             </div>
           )}
 
-          {!isLandingPage && (
+          {!isLandingPage && isCustomerPortal && (
             <Link to="/restaurants" className="mobile-link">
               <MapPin size={18} /> Restaurants
             </Link>

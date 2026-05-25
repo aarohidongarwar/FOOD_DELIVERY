@@ -626,28 +626,7 @@ input:checked + .slider:before {
   justify-content: center;
 }
 
-/* Made with Replit Badge */
-.made-with-badge {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background: white;
-  border: 1px solid var(--ph-border);
-  padding: 6px 12px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--ph-text-muted);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
 
-.m-icon {
-  font-size: 14px;
-  line-height: 1;
-}
 
 /* Animations */
 .fade-in {

@@ -797,10 +797,7 @@ const RestaurantDashboard = () => {
           </div>
         )}
 
-        <div className="made-with-badge">
-          <div className="m-icon">⬡</div>
-          <span>Made with Replit</span>
-        </div>
+
       </main>
 
       {/* Add Product Modal */}
