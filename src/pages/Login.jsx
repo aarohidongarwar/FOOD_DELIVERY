@@ -197,28 +197,16 @@ export default function Login() {
                   🛡️ Admin
                 </button>
               ) : (
-                <>
                   <button 
                     type="button" 
                     className="btn btn-outline btn-sm"
-                    style={{ justifyContent: 'center', gap: '8px', fontSize: '1rem', padding: '10px 16px', fontWeight: '600' }}
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, email: 'rahul@example.com', password: 'password123' }));
-                    }}
-                  >
-                    <User size={18} style={{ color: '#5E35B1', strokeWidth: 2.5 }} /> Customer
-                  </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-outline btn-sm"
-                    style={{ justifyContent: 'center', gap: '8px', fontSize: '1rem', padding: '10px 16px', fontWeight: '600', borderColor: '#f97316', color: '#f97316' }}
+                    style={{ gridColumn: 'span 2', justifyContent: 'center', gap: '8px', fontSize: '1rem', padding: '10px 16px', fontWeight: '600', borderColor: '#f97316', color: '#f97316' }}
                     onClick={() => {
                       setFormData(prev => ({ ...prev, email: 'owner@example.com', password: 'password123' }));
                     }}
                   >
                     🏪 Owner
                   </button>
-                </>
               )}
             </div>
           </div>
