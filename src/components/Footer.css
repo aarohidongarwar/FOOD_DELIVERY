@@ -83,3 +83,13 @@
     grid-template-columns: 1fr;
   }
 }
+
+.footer-dashboard {
+  margin-left: 260px;
+}
+
+@media (max-width: 768px) {
+  .footer-dashboard {
+    margin-left: 0;
+  }
+}

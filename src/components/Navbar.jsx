@@ -79,8 +79,10 @@ export default function Navbar({ onCartClick }) {
     );
   }
 
+  const isDashboard = ['/restaurant-dashboard', '/admin'].includes(location.pathname);
+
   return (
-    <nav className={`navbar ${scrolled ? 'navbar-scrolled' : ''} ${isLandingPage ? 'navbar-landing' : ''}`}>
+    <nav className={`navbar ${scrolled ? 'navbar-scrolled' : ''} ${isLandingPage ? 'navbar-landing' : ''} ${isDashboard ? 'navbar-dashboard' : ''}`}>
       <div className="navbar-inner container">
         {/* Logo */}
         <Link to="/" className="navbar-logo">

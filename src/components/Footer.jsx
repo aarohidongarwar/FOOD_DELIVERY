@@ -1,9 +1,12 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import './Footer.css';
 
 export default function Footer() {
+  const location = useLocation();
+  const isDashboard = ['/restaurant-dashboard', '/admin'].includes(location.pathname);
+
   return (
-    <footer className="footer">
+    <footer className={`footer ${isDashboard ? 'footer-dashboard' : ''}`}>
       <div className="footer-inner container">
         <div className="footer-grid">
           {/* Brand */}

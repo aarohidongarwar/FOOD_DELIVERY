@@ -20,6 +20,24 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
 }
 
+.navbar-dashboard {
+  background: white;
+  border-bottom: 1px solid var(--border);
+}
+
+.navbar-dashboard .container {
+  margin-left: 260px;
+  max-width: calc(100% - 260px);
+  padding: 0 24px;
+}
+
+@media (max-width: 768px) {
+  .navbar-dashboard .container {
+    margin-left: 0;
+    max-width: 100%;
+  }
+}
+
 .navbar-minimal {
   background: transparent;
   box-shadow: none;
