@@ -185,29 +185,42 @@ export default function Login() {
               <span>OR QUICK LOGIN AS</span>
             </div>
             <div className="quick-login-grid">
-              {roleParam === 'admin' ? (
-                <button 
-                  type="button" 
-                  className="btn btn-outline btn-sm"
-                  style={{ gridColumn: 'span 2', justifyContent: 'center' }}
-                  onClick={() => {
-                    setFormData(prev => ({ ...prev, email: 'admin@quickbite.com', password: 'password123' }));
-                  }}
-                >
-                  🛡️ Admin
-                </button>
-              ) : (
-                  <button 
-                    type="button" 
-                    className="btn btn-outline btn-sm"
-                    style={{ gridColumn: 'span 2', justifyContent: 'center', gap: '8px', fontSize: '1rem', padding: '10px 16px', fontWeight: '600', borderColor: '#f97316', color: '#f97316' }}
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, email: 'owner@example.com', password: 'password123' }));
-                    }}
-                  >
-                    🏪 Owner
-                  </button>
-              )}
+              <button 
+                type="button" 
+                className="btn btn-outline btn-sm"
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, email: 'rahul@example.com', password: 'password123' }));
+                }}
+              >
+                👤 Customer
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-outline btn-sm"
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, email: 'owner@example.com', password: 'password123' }));
+                }}
+              >
+                🏪 Owner
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-outline btn-sm"
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, email: 'driver1@example.com', password: 'password123' }));
+                }}
+              >
+                🚴 Driver
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-outline btn-sm"
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, email: 'admin@quickbite.com', password: 'password123' }));
+                }}
+              >
+                🛡️ Admin
+              </button>
             </div>
           </div>
         )}

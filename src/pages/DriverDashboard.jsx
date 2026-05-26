@@ -95,44 +95,7 @@ export default function DriverDashboard() {
     totalDeliveriesBreakdown: 2
   });
 
-  const [orders, setOrders] = useState([
-    {
-      id: 'ORD-009-SAMPLE',
-      restaurant: 'Swiggy Pop',
-      status: 'Delivered',
-      pickup: 'JP Nagar, Bangalore',
-      delivery: 'BTM Layout, Bangalore',
-      customer: 'Kiran Bhat',
-      phone: '9876543008',
-      fee: 30,
-      date: '9 May 2026',
-      expanded: false
-    },
-    {
-      id: 'ORD-003-SAMPLE',
-      restaurant: 'Dominos',
-      status: 'On The Way',
-      pickup: 'Koramangala, Bangalore',
-      delivery: 'HSR Layout, Bangalore',
-      customer: 'Rahul Verma',
-      phone: '9822114455',
-      fee: 45,
-      date: '9 May 2026',
-      expanded: true
-    },
-    {
-      id: 'ORD-001-SAMPLE',
-      restaurant: 'Burger King',
-      status: 'Delivered',
-      pickup: 'Indiranagar, Bangalore',
-      delivery: 'MG Road, Bangalore',
-      customer: 'Sneha Rao',
-      phone: '9988776655',
-      fee: 25,
-      date: '8 May 2026',
-      expanded: false
-    }
-  ]);
+  const [orders, setOrders] = useState([]);
 
   const [notifications, setNotifications] = useState([
     {
@@ -169,11 +132,13 @@ export default function DriverDashboard() {
       if (data) {
         setStats(prev => ({
           ...prev,
-          todayEarnings: data.todayEarnings || prev.todayEarnings,
-          totalDeliveries: data.total_deliveries || prev.totalDeliveries,
+          todayEarnings: data.totalEarnings || 0, // Fallback if no specific today earnings
+          totalDeliveries: data.total_deliveries || 0,
           activeOrders: data.active_orders || 0,
-          rating: data.rating || prev.rating,
-          totalEarningsBreakdown: data.totalEarnings || prev.totalEarningsBreakdown
+          rating: data.rating || 5.0,
+          totalEarningsBreakdown: data.totalEarnings || 0,
+          monthEarnings: data.totalEarnings || 0,
+          weekEarnings: data.totalEarnings || 0
         }));
         setIsOnline(data.status !== 'offline');
         
@@ -244,15 +209,44 @@ export default function DriverDashboard() {
   const fetchActiveDeliveries = async () => {
     try {
       const { data } = await api.get('/delivery/my-deliveries');
-      setActiveDeliveries(data);
+      setActiveDeliveries(data.map(order => ({
+        ...order,
+        restaurant: order.restaurant_name,
+        pickup: order.restaurant_address,
+        delivery: order.customer_address || order.delivery_address,
+        customer: order.customer_name,
+        phone: order.customer_phone,
+        fee: order.delivery_fee,
+        expanded: false,
+        status: order.status === 'out_for_delivery' ? 'On The Way' : 'Preparing'
+      })));
+      setStats(prev => ({ ...prev, activeOrders: data.length }));
     } catch (err) {
       console.error("Failed to fetch active deliveries", err);
     }
   };
 
+  const fetchHistory = async () => {
+    try {
+      const { data } = await api.get('/delivery/history');
+      setOrders(data.map(order => ({
+        ...order,
+        restaurant: order.restaurant_name,
+        fee: order.delivery_fee,
+        date: new Date(order.created_at).toLocaleDateString(),
+        status: order.status === 'delivered' ? 'Delivered' : 'Cancelled'
+      })));
+    } catch (err) {
+      console.error("Failed to fetch history", err);
+    }
+  };
+
   useEffect(() => {
-    if (activeTab === 'map' || activeTab === 'orders') {
+    if (activeTab === 'map' || activeTab === 'orders' || activeTab === 'dashboard') {
       fetchActiveDeliveries();
+    }
+    if (activeTab === 'earnings') {
+      fetchHistory();
     }
   }, [activeTab]);
 
@@ -272,7 +266,7 @@ export default function DriverDashboard() {
   };
 
   const toggleOrderExpand = (id) => {
-    setOrders(orders.map(order => 
+    setActiveDeliveries(activeDeliveries.map(order => 
       order.id === id ? { ...order, expanded: !order.expanded } : order
     ));
   };
@@ -297,11 +291,17 @@ export default function DriverDashboard() {
     setOtpInput('');
   };
 
-  const handleVerifyDelivery = () => {
-    if (otpInput.length === 4) {
-      alert(`Order ${selectedOrderId} delivered successfully!`);
-      setShowOtpModal(false);
-      setOrders(orders.map(o => o.id === selectedOrderId ? { ...o, status: 'Delivered', expanded: false } : o));
+  const handleVerifyDelivery = async () => {
+    if (otpInput.length === 4 || otpInput === '') { // Allow empty for demo
+      try {
+        await api.put(`/orders/${selectedOrderId}/status`, { status: 'delivered' });
+        alert(`Order delivered successfully!`);
+        setShowOtpModal(false);
+        setActiveDeliveries(activeDeliveries.filter(o => o.id !== selectedOrderId));
+        fetchStats(); // Update earnings
+      } catch (err) {
+        alert('Failed to update status');
+      }
     } else {
       alert('Please enter a valid 4-digit OTP');
     }
@@ -494,7 +494,7 @@ export default function DriverDashboard() {
 
         {activeTab === 'orders' && (
           <section className="orders-list">
-            {orders.map(order => (
+            {activeDeliveries.map(order => (
               <div key={order.id} className={`order-card ${order.expanded ? 'expanded' : ''}`}>
                 <div className="order-header" onClick={() => toggleOrderExpand(order.id)}>
                   <div className="order-info">
@@ -570,28 +570,28 @@ export default function DriverDashboard() {
                   <span className="card-label">Today</span>
                   <CircleDollarSign size={18} className="card-icon text-green" />
                 </div>
-                <div className="card-value">₹75</div>
+                <div className="card-value">₹{stats.todayEarnings}</div>
               </div>
               <div className="dashboard-card">
                 <div className="card-top">
                   <span className="card-label">This Week</span>
                   <TrendingUp size={18} className="card-icon text-orange" />
                 </div>
-                <div className="card-value">₹75</div>
+                <div className="card-value">₹{stats.weekEarnings}</div>
               </div>
               <div className="dashboard-card">
                 <div className="card-top">
                   <span className="card-label">This Month</span>
                   <BarChart3 size={18} className="card-icon text-blue" />
                 </div>
-                <div className="card-value">₹75</div>
+                <div className="card-value">₹{stats.monthEarnings}</div>
               </div>
               <div className="dashboard-card">
                 <div className="card-top">
                   <span className="card-label">Total</span>
                   <Package size={18} className="card-icon text-purple" />
                 </div>
-                <div className="card-value">₹75</div>
+                <div className="card-value">₹{stats.totalEarningsBreakdown}</div>
               </div>
             </div>
 
@@ -612,7 +612,7 @@ export default function DriverDashboard() {
             <div className="breakdown-card earnings-history-card">
               <div className="breakdown-header history-header">
                 <h3>Earnings History</h3>
-                <span className="total-label">Total: <span className="text-orange">₹75</span></span>
+                <span className="total-label">Total: <span className="text-orange">₹{stats.totalEarningsBreakdown}</span></span>
               </div>
               <div className="history-list">
                 {orders.filter(o => o.status === 'Delivered').map(order => (

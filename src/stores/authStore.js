@@ -6,6 +6,7 @@ const useAuthStore = create((set, get) => ({
   token: localStorage.getItem('quickbite_token') || null,
   loading: false,
   error: null,
+  wallet: { balance: 0, transactions: [] },
 
   setUser: (user) => {
     localStorage.setItem('quickbite_user', JSON.stringify(user));
@@ -71,6 +72,33 @@ const useAuthStore = create((set, get) => ({
       return data;
     } catch (err) {
       set({ loading: false });
+      throw err;
+    }
+  },
+
+  fetchWallet: async () => {
+    try {
+      const { data } = await api.get('/auth/wallet');
+      set({ wallet: data });
+      const user = get().user;
+      if (user) {
+        const updatedUser = { ...user, wallet_balance: data.balance };
+        localStorage.setItem('quickbite_user', JSON.stringify(updatedUser));
+        set({ user: updatedUser });
+      }
+      return data;
+    } catch (err) {
+      console.error('Fetch wallet error:', err);
+    }
+  },
+
+  addWalletFunds: async (amount) => {
+    try {
+      const { data } = await api.post('/auth/wallet/add', { amount });
+      await get().fetchWallet();
+      return data;
+    } catch (err) {
+      console.error('Add wallet funds error:', err);
       throw err;
     }
   },

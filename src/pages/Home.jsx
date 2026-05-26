@@ -240,22 +240,21 @@ export default function Home() {
         </div>
         
         <div className={showAllMindItems ? "mind-grid" : "mind-carousel"}>
-          {(cuisines.length > 0 ? cuisines : defaultMindItems.map(i => i.name)).slice(0, showAllMindItems ? 100 : 8).map((cuisine, index) => {
-            const fallback = defaultMindItems.find(i => i.name === cuisine) || defaultMindItems[index % defaultMindItems.length];
+          {defaultMindItems.slice(0, showAllMindItems ? 40 : 8).map((item, index) => {
             return (
               <motion.div 
                 key={index}
                 className="mind-card"
                 whileHover={{ y: -5 }}
-                onClick={() => handleMindItemClick(cuisine)}
+                onClick={() => handleMindItemClick(item.name)}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: index * 0.05 }}
               >
                 <div className="mind-icon">
-                  <img src={fallback.img} alt={cuisine} className="mind-img" />
+                  <img src={item.img} alt={item.name} className="mind-img" />
                 </div>
-                <span>{cuisine}</span>
+                <span>{item.name}</span>
               </motion.div>
             );
           })}

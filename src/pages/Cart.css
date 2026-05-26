@@ -348,3 +348,151 @@
 @keyframes loadingBar {
   to { width: 100%; }
 }
+
+/* Wallet Section */
+.cp-wallet-section {
+  background: var(--bg);
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+}
+
+.cp-wallet-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cp-wallet-title {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 1.05rem;
+}
+
+.cp-wallet-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.cp-wallet-checkbox-label input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.cp-wallet-empty {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.cp-wallet-deduction-msg {
+  margin-top: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.cp-payment-wallet-only {
+  padding: 24px;
+  border: 1.5px dashed var(--accent-green);
+  background: rgba(16, 185, 129, 0.05);
+  border-radius: var(--radius-md);
+  text-align: center;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Promo Section */
+.cp-promo-section {
+  background: var(--bg);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.cp-promo-input-wrap {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cp-promo-input-wrap input {
+  flex: 1;
+}
+
+.cp-promo-error {
+  font-size: 0.8rem;
+  color: var(--status-cancelled);
+  display: block;
+}
+
+.cp-promo-success {
+  font-size: 0.8rem;
+  color: var(--accent-green);
+  display: block;
+}
+
+.cp-available-promos {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.cp-promo-subtitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.cp-promos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-promo-badge-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.cp-promo-badge-item:hover {
+  border-color: var(--primary-border);
+  background: var(--primary-bg);
+}
+
+.promo-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--primary-bg);
+  color: var(--primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--primary-border);
+}
+
+.promo-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}

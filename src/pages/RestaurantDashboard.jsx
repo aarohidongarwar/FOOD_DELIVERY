@@ -20,10 +20,14 @@ import {
   Pencil,
   Trash2,
   ChevronRight,
-  Info
+  Info,
+  Star,
+  Download,
+  Moon
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import useAuthStore from '../stores/authStore';
+import api from '../api';
 import './RestaurantDashboard.css';
 
 const RestaurantDashboard = () => {
@@ -32,76 +36,291 @@ const RestaurantDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
-  const [orderTab, setOrderTab] = useState('Delivered');
+  const [orderTab, setOrderTab] = useState('Pending');
   const [timeFilter, setTimeFilter] = useState('30 days');
   const [selectedOrder, setSelectedOrder] = useState(null);
   
-  // Mock data for UI
-  const ownerName = user?.name || "Aarohi";
+  // Real Data State
+  const [restaurant, setRestaurant] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [ordersData, setOrdersData] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({});
   
-  const stats = {
-    totalOrders: 8,
-    totalRevenue: 1740,
-    todaysOrders: 6,
-    pendingOrders: 0,
-    totalProducts: 8,
-    lowStockItems: 2,
-    monthlyGrowth: 100
+  // New Product Form State
+  const [newProduct, setNewProduct] = useState({ name: '', description: '', price: 0, category: 'Main Course', stock: 50, available: true });
+
+  // Status mapping: DB values → UI-friendly values
+  const dbToUiStatus = (status) => {
+    if (status === 'confirmed') return 'accepted';
+    if (status === 'out_for_delivery') return 'ready';
+    return status;
+  };
+  
+  const uiToDbStatus = (status) => {
+    if (status === 'accepted') return 'confirmed';
+    if (status === 'ready') return 'out_for_delivery';
+    return status;
   };
 
-  const products = [
-    { id: 1, name: 'Butter Chicken', category: 'Main Course', price: 280, stock: 50, available: true },
-    { id: 2, name: 'Dal Makhani', category: 'Main Course', price: 180, stock: 40, available: true },
-    { id: 3, name: 'Garlic Naan', category: 'Breads', price: 50, stock: 100, available: true },
-    { id: 4, name: 'Paneer Tikka', category: 'Starters', price: 220, stock: 30, available: true },
-    { id: 5, name: 'Biryani', category: 'Main Course', price: 320, stock: 3, available: true },
-    { id: 6, name: 'Gulab Jamun', category: 'Desserts', price: 80, stock: 0, available: false },
-    { id: 7, name: 'Lassi', category: 'Beverages', price: 60, stock: 80, available: true },
-    { id: 8, name: 'Chicken Tikka', category: 'Starters', price: 260, stock: 25, available: true },
-  ];
+  // Transform raw order from backend to dashboard-friendly format
+  const transformOrder = (order) => ({
+    ...order,
+    customer: order.customer_name || order.customer || 'Customer',
+    price: parseFloat(order.grand_total || order.total_amount || order.price || 0),
+    address: order.delivery_address || order.address || 'N/A',
+    time: order.created_at ? new Date(order.created_at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : 'Just now',
+    status: dbToUiStatus(order.status),
+    items: order.items || [],
+    itemCount: Array.isArray(order.items) ? order.items.length : (order.items || 0)
+  });
 
-  const ordersData = [
-    { id: 'Order #4', customer: 'Sita Devi', items: 1, price: 640, status: 'accepted' },
-    { id: 'Order #5', customer: 'Mohan Lal', items: 2, price: 460, status: 'accepted' },
-    { id: 'Order #3', customer: 'Ravi Kumar', items: 2, price: 840, status: 'preparing' },
-    { id: 'Order #1', customer: 'Amit Sharma', address: '12 Residency Road, Bangalore', items: 2, price: 380, time: '07 May, 01:06 pm', status: 'delivered' },
-    { id: 'Order #2', customer: 'Priya Menon', address: '45 Koramangala, Bangalore', items: 2, price: 400, time: '07 May, 11:06 am', status: 'delivered' },
-    { id: 'Order #6', customer: 'Anjali Singh', address: '89 HSR Layout, Bangalore', items: 2, price: 640, time: '06 May, 04:06 pm', status: 'delivered' },
-    { id: 'Order #7', customer: 'Ramesh Gupta', address: '34 Whitefield, Bangalore', items: 2, price: 320, time: '05 May, 04:06 pm', status: 'delivered' },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const { data: restData } = await api.get('/restaurants/owner/me');
+        setRestaurant(restData);
+        
+        // Populate settings form
+        setSettingsForm({
+          owner_name: user?.name || '',
+          owner_phone: user?.phone || '',
+          owner_email: user?.email || '',
+          name: restData?.name || '',
+          cuisine_type: restData?.cuisine_type || '',
+          address: restData?.address || '',
+          delivery_time: restData?.delivery_time || '30-40 min',
+          delivery_fee: restData?.delivery_fee || 29,
+          min_order: restData?.min_order || 99,
+        });
+
+        if (restData) {
+          const [menuRes, ordRes] = await Promise.all([
+            api.get(`/menu/restaurant/${restData.id}`),
+            api.get(`/orders/restaurant/${restData.id}`)
+          ]);
+          
+          // Map menu items: is_available → available, add default stock
+          setProducts((menuRes.data || []).map(p => ({
+            ...p,
+            available: p.is_available === 1 || p.is_available === true,
+            stock: p.stock ?? 50
+          })));
+          
+          // Transform orders
+          setOrdersData((ordRes.data || []).map(transformOrder));
+          
+          try {
+            const { data: restFull } = await api.get(`/restaurants/${restData.id}`);
+            if (restFull.reviews) setReviews(restFull.reviews);
+          } catch(e) {}
+          
+          // Fetch analytics
+          try {
+            const { data: analyticsData } = await api.get(`/orders/restaurant/${restData.id}/analytics?days=30`);
+            setAnalytics(analyticsData);
+          } catch(e) { console.warn('Analytics fetch failed', e); }
+        }
+      } catch (err) {
+        console.error('Failed to fetch dashboard data', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Refresh analytics when time filter changes
+  useEffect(() => {
+    if (!restaurant) return;
+    const daysMap = { '7 days': 7, '30 days': 30, '90 days': 90 };
+    const days = daysMap[timeFilter] || 30;
+    api.get(`/orders/restaurant/${restaurant.id}/analytics?days=${days}`)
+      .then(({ data }) => setAnalytics(data))
+      .catch(e => console.warn('Analytics refresh failed', e));
+  }, [timeFilter, restaurant]);
+
+  // Calculated Stats (from analytics or raw data as fallback)
+  const totalOrders = analytics?.summary?.totalOrders ?? ordersData.length;
+  const totalRevenue = analytics?.summary?.totalRevenue ?? ordersData.filter(o => o.status === 'delivered').reduce((sum, o) => sum + (o.price || 0), 0);
+  const todaysOrders = analytics?.summary?.todaysOrders ?? ordersData.filter(o => new Date(o.created_at || new Date()).toDateString() === new Date().toDateString()).length;
+  const todaysRevenue = analytics?.summary?.todaysRevenue ?? 0;
+  const pendingOrders = analytics?.summary?.pendingOrders ?? ordersData.filter(o => o.status === 'pending').length;
+  
+  const stats = {
+    totalOrders,
+    totalRevenue: Math.round(totalRevenue * 100) / 100,
+    todaysOrders,
+    todaysRevenue: Math.round(todaysRevenue * 100) / 100,
+    pendingOrders,
+    totalProducts: products.length,
+    lowStockItems: products.filter(p => (p.stock || 0) <= 5 && (p.stock || 0) > 0).length,
+    monthlyGrowth: 15
+  };
 
   const notificationsData = [
-    { id: 1, type: 'order', title: 'New Order Received', desc: 'Order #4 from Sita Devi for ₹640 is waiting for your acceptance', time: '07 May, 04:01 pm', unread: false, iconColor: 'blue' },
-    { id: 2, type: 'order', title: 'New Order Received', desc: 'Order #5 from Mohan Lal for ₹460 has been accepted', time: '07 May, 03:51 pm', unread: false, iconColor: 'blue' },
-    { id: 3, type: 'alert', title: 'Low Stock Alert', desc: 'Biryani is running low — only 3 units remaining', time: '07 May, 03:06 pm', unread: false, iconColor: 'yellow' },
-    { id: 4, type: 'success', title: 'Account Approved', desc: 'Congratulations! Your Spice Garden account has been approved and is now live', time: '05 May, 04:06 pm', unread: false, iconColor: 'green' },
-    { id: 5, type: 'info', title: 'Weekly Report Ready', desc: 'Your weekly earnings report for last week is now available in Revenue section', time: '04 May, 04:06 pm', unread: true, iconColor: 'gray' },
+    { id: 1, type: 'order', title: 'Welcome', desc: 'Welcome to your partner hub!', time: 'Just now', unread: true, iconColor: 'green' }
   ];
 
-  const analyticsChartData = [
-    { name: '05-01', revenue: 0, orders: 0 },
-    { name: '05-02', revenue: 0, orders: 0 },
-    { name: '05-03', revenue: 0, orders: 0 },
-    { name: '05-04', revenue: 0, orders: 0 },
-    { name: '05-05', revenue: 320, orders: 1 },
-    { name: '05-06', revenue: 640, orders: 1 },
-    { name: '05-07', revenue: 780, orders: 6 }
-  ];
+  const analyticsChartData = analytics?.dailyData?.length > 0 
+    ? analytics.dailyData 
+    : [
+        { name: 'Mon', revenue: totalRevenue * 0.1, orders: 1 },
+        { name: 'Tue', revenue: totalRevenue * 0.2, orders: 2 },
+        { name: 'Wed', revenue: totalRevenue * 0.3, orders: 3 },
+        { name: 'Thu', revenue: totalRevenue * 0.4, orders: 4 },
+        { name: 'Fri', revenue: totalRevenue, orders: totalOrders }
+      ];
 
-  const topProducts = [
-    { name: 'Garlic Naan', sold: 6, rev: 300, percentage: 100 },
-    { name: 'Paneer Tikka', sold: 3, rev: 660, percentage: 50 },
-    { name: 'Lassi', sold: 3, rev: 180, percentage: 50 },
-    { name: 'Chicken Tikka', sold: 3, rev: 780, percentage: 50 },
-    { name: 'Butter Chicken', sold: 2, rev: 560, percentage: 33 },
-  ];
+  const topProducts = analytics?.topProducts?.length > 0
+    ? analytics.topProducts.map((tp, i, arr) => ({
+        name: tp.name,
+        sold: tp.sold,
+        rev: tp.revenue,
+        percentage: arr[0].sold > 0 ? Math.round((tp.sold / arr[0].sold) * 100) : 0
+      }))
+    : products.slice(0,5).map(p => ({
+        name: p.name, sold: 0, rev: p.price * 5, percentage: 50
+      }));
 
-  const revenueStats = { gross: 1740, commission: 313.2, net: 1426.8, pending: 1426.8 };
-  const settlements = [{ id: '#1', gross: 1740, commission: 313.2, net: 1426.8, status: 'processed', period: '7/4/2026 - 7/5/2026' }];
+  const revenueStats = { 
+    gross: Math.round(totalRevenue * 100) / 100, 
+    commission: Math.round(totalRevenue * 0.18 * 100) / 100, 
+    net: Math.round(totalRevenue * 0.82 * 100) / 100, 
+    pending: 0 
+  };
+  const settlements = [];
 
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleAddProduct = async (e) => {
+    e.preventDefault();
+    if (!restaurant) return;
+    try {
+      const { data } = await api.post('/menu', {
+        restaurant_id: restaurant.id,
+        name: newProduct.name,
+        description: newProduct.description,
+        price: newProduct.price,
+        category: newProduct.category,
+        image_url: newProduct.image_url || null,
+        is_veg: true,
+        is_bestseller: false,
+        is_available: newProduct.available ? 1 : 0
+      });
+      setProducts([...products, { ...data, available: data.is_available === 1 || data.is_available === true, stock: 50 }]);
+      setIsProductModalOpen(false);
+      setNewProduct({ name: '', description: '', price: 0, category: 'Main Course', stock: 50, available: true });
+    } catch(err) {
+      console.error(err);
+      alert('Failed to add product');
+    }
+  };
+
+  const handleEditProduct = async (e) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    try {
+      const { data } = await api.put(`/menu/${editingProduct.id}`, {
+        name: editingProduct.name,
+        description: editingProduct.description,
+        price: editingProduct.price,
+        category: editingProduct.category,
+        image_url: editingProduct.image_url,
+        is_available: editingProduct.available ? 1 : 0
+      });
+      setProducts(products.map(p => p.id === data.id ? { ...data, available: data.is_available === 1 || data.is_available === true, stock: p.stock } : p));
+      setEditingProduct(null);
+    } catch(err) {
+      console.error(err);
+      alert('Failed to update product');
+    }
+  };
+
+  const handleDeleteProduct = async (productId) => {
+    if (!window.confirm('Are you sure you want to delete this product?')) return;
+    try {
+      await api.delete(`/menu/${productId}`);
+      setProducts(products.filter(p => p.id !== productId));
+    } catch(err) {
+      console.error(err);
+      alert('Failed to delete product');
+    }
+  };
+
+  const handleToggleAvailability = async (product) => {
+    try {
+      const { data } = await api.put(`/menu/${product.id}`, { is_available: product.available ? 0 : 1 });
+      setProducts(products.map(p => p.id === product.id ? { ...p, available: !p.available } : p));
+    } catch(err) {
+      console.error(err);
+      alert('Failed to toggle availability');
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      await api.put(`/orders/${orderId}/status`, { status: newStatus });
+      // Map the UI status for local state update
+      const uiStatus = dbToUiStatus(newStatus === 'accepted' ? 'confirmed' : newStatus === 'ready' ? 'out_for_delivery' : newStatus);
+      setOrdersData(ordersData.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder({ ...selectedOrder, status: newStatus });
+      }
+    } catch(err) {
+      console.error(err);
+      alert('Failed to update status');
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!restaurant) return;
+    setSavingSettings(true);
+    try {
+      const { data } = await api.put('/restaurants/owner/me', settingsForm);
+      setRestaurant(data);
+      alert('Settings saved successfully!');
+    } catch(err) {
+      console.error(err);
+      alert('Failed to save settings');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleToggleRestaurantOpen = async () => {
+    if (!restaurant) return;
+    try {
+      const { data } = await api.put('/restaurants/owner/toggle-status', { is_open: !restaurant.is_open });
+      setRestaurant(data);
+    } catch(err) {
+      console.error(err);
+      alert('Failed to toggle status');
+    }
+  };
+
+  const handlePrintReceipt = () => {
+    window.print();
+  };
+
+  const handleExportCSV = () => {
+    const header = "Date,Revenue,Orders\n";
+    const rows = analyticsChartData.map(d => `${d.name},${d.revenue},${d.orders}`).join("\n");
+    const blob = new Blob([header + rows], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'analytics.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const navItems = [
@@ -112,6 +331,7 @@ const RestaurantDashboard = () => {
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'revenue', label: 'Revenue', icon: IndianRupee },
     { id: 'offers', label: 'Offers', icon: Tag },
+    { id: 'reviews', label: 'Reviews', icon: Star },
     { id: 'notifications', label: 'Notifications', icon: Bell, badge: 1 },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -125,7 +345,7 @@ const RestaurantDashboard = () => {
   };
 
   return (
-    <div className="partner-hub-layout">
+    <div className={`partner-hub-layout ${isDarkMode ? 'dark-mode' : ''}`}>
       {/* Sidebar */}
       <aside className="partner-sidebar">
         <div className="sidebar-brand">
@@ -134,8 +354,10 @@ const RestaurantDashboard = () => {
         </div>
 
         <div className="partner-profile-card">
-          <div className="partner-name">Spice Garden</div>
-          <div className="partner-status">APPROVED</div>
+          <div className="partner-name">{restaurant?.name || 'My Restaurant'}</div>
+          <div className="partner-status" style={{cursor: 'pointer'}} onClick={handleToggleRestaurantOpen}>
+            {restaurant?.is_open ? '🟢 OPEN' : '🔴 CLOSED'}
+          </div>
         </div>
 
         <nav className="partner-nav">
@@ -153,6 +375,10 @@ const RestaurantDashboard = () => {
         </nav>
 
         <div className="sidebar-footer">
+          <button className="logout-btn" onClick={() => setIsDarkMode(!isDarkMode)} style={{marginBottom: '10px', background: 'transparent', color: 'inherit'}}>
+            <Moon size={18} />
+            <span>Dark Mode</span>
+          </button>
           <button className="logout-btn" onClick={handleLogout}>
             <LogOut size={18} />
             <span>Logout</span>
@@ -166,8 +392,8 @@ const RestaurantDashboard = () => {
           <div className="dashboard-view fade-in">
             <header className="view-header">
               <div className="header-titles">
-                <h1>Good morning, Rajesh!</h1>
-                <p>Here's how Spice Garden is performing today.</p>
+                <h1>Good morning, {user?.name?.split(' ')[0] || 'Partner'}!</h1>
+                <p>Here's how {restaurant?.name || 'your restaurant'} is performing today.</p>
               </div>
             </header>
 
@@ -205,7 +431,7 @@ const RestaurantDashboard = () => {
                   </div>
                 </div>
                 <div className="stat-value">{stats.todaysOrders}</div>
-                <div className="stat-subtext">₹780 today</div>
+                <div className="stat-subtext">₹{stats.todaysRevenue} today</div>
               </div>
 
               <div className="stat-card">
@@ -251,8 +477,8 @@ const RestaurantDashboard = () => {
                   {ordersData.slice(0, 5).map(order => (
                     <div className="recent-order-item" key={order.id}>
                       <div className="r-order-info">
-                        <span className="r-order-name">{order.id} - {order.customer}</span>
-                        <span className="r-order-meta">{order.items} items • ₹{order.price}</span>
+                        <span className="r-order-name">#{order.id?.substring(0,8)} - {order.customer}</span>
+                        <span className="r-order-meta">{order.itemCount} items • ₹{order.price}</span>
                       </div>
                       <div className={`r-order-badge ${order.status}`}>{order.status}</div>
                     </div>
@@ -294,7 +520,7 @@ const RestaurantDashboard = () => {
                     <div className="p-card-footer">
                       <div className="p-toggle">
                         <label className="toggle-switch-small">
-                          <input type="checkbox" checked={product.available} readOnly />
+                          <input type="checkbox" checked={product.available} onChange={() => handleToggleAvailability(product)} />
                           <span className="slider round"></span>
                         </label>
                         <span style={{color: product.available ? 'var(--ph-green)' : 'var(--ph-text-muted)'}}>
@@ -302,8 +528,8 @@ const RestaurantDashboard = () => {
                         </span>
                       </div>
                       <div className="p-actions">
-                        <button className="p-btn-icon"><Pencil size={14} /></button>
-                        <button className="p-btn-icon delete"><Trash2 size={14} /></button>
+                        <button className="p-btn-icon" onClick={() => setEditingProduct({...product})}><Pencil size={14} /></button>
+                        <button className="p-btn-icon delete" onClick={() => handleDeleteProduct(product.id)}><Trash2 size={14} /></button>
                       </div>
                     </div>
                   </div>
@@ -426,7 +652,7 @@ const RestaurantDashboard = () => {
                           </span>
                         </td>
                         <td>
-                          <button className="t-edit-btn">
+                          <button className="t-edit-btn" onClick={() => setEditingProduct({...product})}>
                             <Pencil size={16} />
                           </button>
                         </td>
@@ -492,10 +718,15 @@ const RestaurantDashboard = () => {
                 <h1>Analytics</h1>
                 <p>Sales insights and performance trends</p>
               </div>
-              <div className="time-filter-pills">
-                {['7 days', '30 days', '90 days'].map(tf => (
-                  <button key={tf} className={`tf-btn ${timeFilter === tf ? 'active' : ''}`} onClick={() => setTimeFilter(tf)}>{tf}</button>
-                ))}
+              <div style={{display: 'flex', gap: '16px', alignItems: 'center'}}>
+                <div className="time-filter-pills">
+                  {['7 days', '30 days', '90 days'].map(tf => (
+                    <button key={tf} className={`tf-btn ${timeFilter === tf ? 'active' : ''}`} onClick={() => setTimeFilter(tf)}>{tf}</button>
+                  ))}
+                </div>
+                <button className="btn-outline" onClick={handleExportCSV}>
+                  <Download size={16} /> Export CSV
+                </button>
               </div>
             </header>
 
@@ -697,6 +928,40 @@ const RestaurantDashboard = () => {
           </div>
         )}
 
+        {activeTab === 'reviews' && (
+          <div className="reviews-view fade-in">
+            <header className="view-header">
+              <div className="header-titles">
+                <h1>Customer Reviews</h1>
+                <p>Monitor and respond to customer feedback</p>
+              </div>
+            </header>
+            
+            <div className="reviews-list">
+              {reviews.length > 0 ? (
+                reviews.map(review => (
+                  <div key={review.id} className="review-card" style={{padding: '20px', background: 'var(--ph-bg)', border: '1px solid var(--ph-border)', borderRadius: '12px', marginBottom: '16px'}}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '12px'}}>
+                      <h4 style={{margin: 0}}>{review.user?.name || 'Customer'}</h4>
+                      <div style={{display: 'flex', color: 'var(--ph-orange)'}}>
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={16} fill={i < review.rating ? 'currentColor' : 'none'} />
+                        ))}
+                      </div>
+                    </div>
+                    <p style={{margin: 0, color: 'var(--ph-text-muted)'}}>{review.comment}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state-simple">
+                  <Star size={48} style={{color: 'var(--ph-text-muted)', marginBottom: '16px', opacity: 0.5}} />
+                  <p>No reviews yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'settings' && (
           <div className="settings-view fade-in">
             <header className="view-header">
@@ -713,16 +978,16 @@ const RestaurantDashboard = () => {
                 <div className="s-form-grid">
                   <div className="form-group">
                     <label>Full Name</label>
-                    <input type="text" defaultValue="Rajesh Kumar" />
+                    <input type="text" value={settingsForm.owner_name || ''} onChange={e => setSettingsForm({...settingsForm, owner_name: e.target.value})} />
                   </div>
                   <div className="form-group">
                     <label>Mobile Number</label>
-                    <input type="text" defaultValue="9876543210" />
+                    <input type="text" value={settingsForm.owner_phone || ''} onChange={e => setSettingsForm({...settingsForm, owner_phone: e.target.value})} />
                   </div>
                 </div>
                 <div className="form-group">
                   <label>Email</label>
-                  <input type="email" defaultValue="rajesh@spicegarden.com" />
+                  <input type="email" value={settingsForm.owner_email || ''} onChange={e => setSettingsForm({...settingsForm, owner_email: e.target.value})} />
                 </div>
               </div>
 
@@ -732,30 +997,16 @@ const RestaurantDashboard = () => {
                 <div className="s-form-grid">
                   <div className="form-group">
                     <label>Business Name</label>
-                    <input type="text" defaultValue="Spice Garden" />
+                    <input type="text" value={settingsForm.name || ''} onChange={e => setSettingsForm({...settingsForm, name: e.target.value})} />
                   </div>
                   <div className="form-group">
-                    <label>Category</label>
-                    <input type="text" defaultValue="Indian Cuisine" />
+                    <label>Category (Cuisine)</label>
+                    <input type="text" value={settingsForm.cuisine_type || ''} onChange={e => setSettingsForm({...settingsForm, cuisine_type: e.target.value})} />
                   </div>
                 </div>
                 <div className="form-group">
                   <label>Full Address</label>
-                  <input type="text" defaultValue="45 MG Road" />
-                </div>
-                <div className="s-form-grid-3">
-                  <div className="form-group">
-                    <label>City</label>
-                    <input type="text" defaultValue="Bangalore" />
-                  </div>
-                  <div className="form-group">
-                    <label>State</label>
-                    <input type="text" defaultValue="Karnataka" />
-                  </div>
-                  <div className="form-group">
-                    <label>Pincode</label>
-                    <input type="text" defaultValue="560001" />
-                  </div>
+                  <input type="text" value={settingsForm.address || ''} onChange={e => setSettingsForm({...settingsForm, address: e.target.value})} />
                 </div>
               </div>
 
@@ -764,33 +1015,25 @@ const RestaurantDashboard = () => {
                 <h3>Store Timings & Operations</h3>
                 <div className="s-form-grid">
                   <div className="form-group">
-                    <label>Opening Time</label>
-                    <div className="time-input-wrap">
-                      <input type="time" defaultValue="09:00" />
-                    </div>
+                    <label>Delivery Time (e.g. 30-40 min)</label>
+                    <input type="text" value={settingsForm.delivery_time || ''} onChange={e => setSettingsForm({...settingsForm, delivery_time: e.target.value})} />
                   </div>
                   <div className="form-group">
-                    <label>Closing Time</label>
-                    <div className="time-input-wrap">
-                      <input type="time" defaultValue="23:00" />
-                    </div>
+                    <label>Delivery Fee (₹)</label>
+                    <input type="number" value={settingsForm.delivery_fee || 0} onChange={e => setSettingsForm({...settingsForm, delivery_fee: parseFloat(e.target.value) || 0})} />
                   </div>
                 </div>
                 <div className="s-form-grid">
                   <div className="form-group">
-                    <label>Delivery Radius (km)</label>
-                    <input type="number" defaultValue="5" />
-                  </div>
-                  <div className="form-group">
-                    <label>Prep Time (minutes)</label>
-                    <input type="number" defaultValue="30" />
+                    <label>Min Order Value (₹)</label>
+                    <input type="number" value={settingsForm.min_order || 0} onChange={e => setSettingsForm({...settingsForm, min_order: parseFloat(e.target.value) || 0})} />
                   </div>
                 </div>
               </div>
 
               <div className="settings-actions">
-                <button className="btn-primary">
-                  Save Changes
+                <button className="btn-primary" onClick={handleSaveSettings} disabled={savingSettings}>
+                  {savingSettings ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </div>
@@ -799,6 +1042,65 @@ const RestaurantDashboard = () => {
 
 
       </main>
+
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <div className="modal-overlay fade-in">
+          <div className="modal-content scale-in">
+            <div className="modal-header">
+              <h2>Edit Product</h2>
+              <button className="close-btn" onClick={() => setEditingProduct(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form className="modal-form" onSubmit={handleEditProduct}>
+              <div className="form-group">
+                <label>Name *</label>
+                <input type="text" placeholder="Product name" required value={editingProduct.name} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} />
+              </div>
+              
+              <div className="form-group">
+                <label>Description</label>
+                <input type="text" placeholder="Brief description" value={editingProduct.description || ''} onChange={e => setEditingProduct({...editingProduct, description: e.target.value})} />
+              </div>
+              
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Price (₹) *</label>
+                  <input type="number" required value={editingProduct.price} onChange={e => setEditingProduct({...editingProduct, price: parseFloat(e.target.value) || 0})} />
+                </div>
+                <div className="form-group">
+                  <label>Category *</label>
+                  <input type="text" placeholder="e.g. Main Course" required value={editingProduct.category} onChange={e => setEditingProduct({...editingProduct, category: e.target.value})} />
+                </div>
+              </div>
+              
+              <div className="form-group">
+                <label>Product Image URL</label>
+                <input type="text" placeholder="https://..." value={editingProduct.image_url || ''} onChange={e => setEditingProduct({...editingProduct, image_url: e.target.value})} />
+              </div>
+              
+              <div className="form-toggle">
+                <label className="toggle-switch">
+                  <input type="checkbox" checked={editingProduct.available} onChange={e => setEditingProduct({...editingProduct, available: e.target.checked})} />
+                  <span className="slider round"></span>
+                </label>
+                <span>Available for sale</span>
+              </div>
+              
+              <div className="modal-actions">
+                <button type="button" className="btn-cancel" onClick={() => setEditingProduct(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary">
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Add Product Modal */}
       {isProductModalOpen && (
@@ -811,37 +1113,37 @@ const RestaurantDashboard = () => {
               </button>
             </div>
             
-            <form className="modal-form">
+            <form className="modal-form" onSubmit={handleAddProduct}>
               <div className="form-group">
                 <label>Name *</label>
-                <input type="text" placeholder="Product name" />
+                <input type="text" placeholder="Product name" required value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
               </div>
               
               <div className="form-group">
                 <label>Description</label>
-                <input type="text" placeholder="Brief description" />
+                <input type="text" placeholder="Brief description" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} />
               </div>
               
               <div className="form-grid">
                 <div className="form-group">
                   <label>Price (₹) *</label>
-                  <input type="number" defaultValue={0} />
+                  <input type="number" required value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: parseFloat(e.target.value) || 0})} />
                 </div>
                 <div className="form-group">
                   <label>Category *</label>
-                  <input type="text" placeholder="e.g. Main Course" />
+                  <input type="text" placeholder="e.g. Main Course" required value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} />
                 </div>
               </div>
               
               <div className="form-group">
-                <label>Product Image</label>
-                <input type="file" accept="image/jpeg, image/png" />
+                <label>Product Image URL</label>
+                <input type="text" placeholder="https://..." value={newProduct.image_url || ''} onChange={e => setNewProduct({...newProduct, image_url: e.target.value})} />
               </div>
               
               <div className="form-grid">
                 <div className="form-group">
                   <label>Stock Qty</label>
-                  <input type="number" defaultValue={50} />
+                  <input type="number" value={newProduct.stock} onChange={e => setNewProduct({...newProduct, stock: parseInt(e.target.value) || 0})} />
                 </div>
                 <div className="form-group">
                   <label>Low Stock Alert</label>
@@ -851,7 +1153,7 @@ const RestaurantDashboard = () => {
               
               <div className="form-toggle">
                 <label className="toggle-switch">
-                  <input type="checkbox" defaultChecked />
+                  <input type="checkbox" checked={newProduct.available} onChange={e => setNewProduct({...newProduct, available: e.target.checked})} />
                   <span className="slider round"></span>
                 </label>
                 <span>Available for sale</span>
@@ -861,7 +1163,7 @@ const RestaurantDashboard = () => {
                 <button type="button" className="btn-cancel" onClick={() => setIsProductModalOpen(false)}>
                   Cancel
                 </button>
-                <button type="button" className="btn-primary">
+                <button type="submit" className="btn-primary">
                   Add Product
                 </button>
               </div>
@@ -961,18 +1263,17 @@ const RestaurantDashboard = () => {
                 </div>
               </div>
               
-              <h4 style={{borderBottom: '1px solid var(--ph-border)', paddingBottom: '8px', marginBottom: '16px'}}>Order Items ({selectedOrder.items})</h4>
+              <h4 style={{borderBottom: '1px solid var(--ph-border)', paddingBottom: '8px', marginBottom: '16px'}}>Order Items ({selectedOrder.items?.length || 0})</h4>
               <div style={{marginBottom: '24px'}}>
-                {/* Mock items list */}
-                <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem'}}>
-                  <span>1x Butter Chicken</span>
-                  <span>₹280</span>
-                </div>
-                {selectedOrder.items > 1 && (
-                  <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem'}}>
-                    <span>2x Garlic Naan</span>
-                    <span>₹100</span>
-                  </div>
+                {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                  selectedOrder.items.map((item, idx) => (
+                    <div key={idx} style={{display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem'}}>
+                      <span>{item.quantity}x {item.name}</span>
+                      <span>₹{item.price * item.quantity}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{color: 'var(--ph-text-muted)'}}>No items found.</p>
                 )}
               </div>
               
@@ -985,22 +1286,23 @@ const RestaurantDashboard = () => {
             <div className="modal-actions" style={{padding: '0 24px 24px 24px', display: 'flex', gap: '12px'}}>
               {selectedOrder.status === 'pending' && (
                 <>
-                  <button type="button" className="btn-cancel" onClick={() => setSelectedOrder(null)}>Reject</button>
-                  <button type="button" className="btn-primary" style={{backgroundColor: 'var(--ph-green)'}}>Accept Order</button>
+                  <button type="button" className="btn-cancel" onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'cancelled')}>Reject</button>
+                  <button type="button" className="btn-primary" style={{backgroundColor: 'var(--ph-green)'}} onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'accepted')}>Accept Order</button>
                 </>
               )}
               {selectedOrder.status === 'accepted' && (
-                <button type="button" className="btn-primary" style={{width: '100%', justifyContent: 'center'}}>Mark as Preparing</button>
+                <button type="button" className="btn-primary" style={{width: '100%', justifyContent: 'center'}} onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'preparing')}>Mark as Preparing</button>
               )}
               {selectedOrder.status === 'preparing' && (
-                <button type="button" className="btn-primary" style={{width: '100%', justifyContent: 'center'}}>Mark as Ready</button>
+                <button type="button" className="btn-primary" style={{width: '100%', justifyContent: 'center'}} onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'ready')}>Mark as Ready</button>
               )}
               {selectedOrder.status === 'ready' && (
-                <button type="button" className="btn-primary" style={{width: '100%', justifyContent: 'center'}}>Mark as Delivered</button>
+                <button type="button" className="btn-primary" style={{width: '100%', justifyContent: 'center'}} onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'delivered')}>Mark as Delivered</button>
               )}
               {selectedOrder.status === 'delivered' && (
                 <button type="button" className="btn-cancel" style={{width: '100%', justifyContent: 'center'}} onClick={() => setSelectedOrder(null)}>Close</button>
               )}
+              <button type="button" className="btn-outline" onClick={handlePrintReceipt}>Print Receipt</button>
             </div>
           </div>
         </div>

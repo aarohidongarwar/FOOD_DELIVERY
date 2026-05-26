@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Mail, Phone, MapPin, Save } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import './Profile.css';
 
 export default function Profile() {
-  const { user, updateProfile } = useAuthStore();
+  const { user, updateProfile, wallet, fetchWallet, addWalletFunds } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -12,6 +12,34 @@ export default function Profile() {
     address: user?.address || ''
   });
   const [saving, setSaving] = useState(false);
+
+  const [addAmount, setAddAmount] = useState('');
+  const [addingFunds, setAddingFunds] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === 'customer') {
+      fetchWallet();
+    }
+  }, [fetchWallet, user]);
+
+  const handleAddFunds = async () => {
+    const amt = parseFloat(addAmount);
+    if (isNaN(amt) || amt <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+
+    setAddingFunds(true);
+    try {
+      await addWalletFunds(amt);
+      setAddAmount('');
+      alert('Funds added successfully!');
+    } catch (err) {
+      alert('Failed to add funds. Please try again.');
+    } finally {
+      setAddingFunds(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -145,6 +173,69 @@ export default function Profile() {
               </div>
             )}
           </div>
+
+          {user?.role === 'customer' && (
+            <div className="profile-card mt-6" style={{ marginTop: '24px' }}>
+              <div className="pc-header">
+                <h3>My Wallet</h3>
+              </div>
+              <div className="wallet-dashboard">
+                <div className="wallet-balance-card">
+                  <span className="wallet-bal-label">Available Balance</span>
+                  <h2 className="wallet-bal-amount">₹{(wallet?.balance || 0).toFixed(2)}</h2>
+                  
+                  <div className="wallet-add-funds">
+                    <label className="wallet-input-label">Add Funds to Wallet</label>
+                    <div className="wallet-add-input-wrap">
+                      <input 
+                        type="number" 
+                        placeholder="Enter amount (e.g. 500)" 
+                        value={addAmount} 
+                        onChange={(e) => setAddAmount(e.target.value)} 
+                        className="input-field"
+                        min="1"
+                      />
+                      <button className="btn btn-primary" onClick={handleAddFunds} disabled={addingFunds}>
+                        {addingFunds ? 'Processing...' : 'Add Balance'}
+                      </button>
+                    </div>
+                    <div className="wallet-quick-amounts">
+                      {['100', '500', '1000'].map(amt => (
+                        <button 
+                          key={amt} 
+                          className="btn btn-secondary btn-sm" 
+                          onClick={() => setAddAmount(amt)}
+                        >
+                          + ₹{amt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="wallet-transactions">
+                  <h4>Recent Transactions</h4>
+                  {wallet?.transactions?.length === 0 ? (
+                    <p className="no-transactions">No transactions yet.</p>
+                  ) : (
+                    <div className="transactions-list">
+                      {wallet?.transactions?.map(tx => (
+                        <div key={tx.id} className="transaction-item">
+                          <div className="tx-details">
+                            <span className="tx-desc">{tx.description || 'Wallet transaction'}</span>
+                            <span className="tx-date">{new Date(tx.created_at).toLocaleDateString()}</span>
+                          </div>
+                          <span className={`tx-amount ${tx.type === 'credit' ? 'credit-style' : 'debit-style'}`}>
+                            {tx.type === 'credit' ? '+' : '-'} ₹{parseFloat(tx.amount).toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

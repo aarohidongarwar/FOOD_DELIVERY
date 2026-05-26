@@ -32,10 +32,10 @@ export default function RestaurantCard({ restaurant, index = 0 }) {
         <div className="rc-body">
           <div className="rc-header">
             <h3 className="rc-name">{name}</h3>
-            {rating > 0 && (
+            {Number(rating) > 0 && (
               <div className="star-rating">
                 <Star size={12} fill="white" />
-                {rating.toFixed(1)}
+                {Number(rating).toFixed(1)}
               </div>
             )}
           </div>

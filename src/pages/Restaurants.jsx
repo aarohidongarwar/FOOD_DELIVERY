@@ -23,7 +23,7 @@ export default function Restaurants() {
     if (search) params.search = search;
     if (cuisineParam) params.cuisine = cuisineParam;
     if (sortParam) params.sort = sortParam;
-    if (isGrocery) params.is_grocery = true;
+    params.is_grocery = isGrocery ? 'true' : 'false';
     
     fetchRestaurants(params);
   }, [search, cuisineParam, sortParam, isGrocery, fetchRestaurants]);

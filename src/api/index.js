@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getMockResponse } from './mockData';
 
 // Toggle this to false when the real backend is ready
-const USE_MOCK_FALLBACK = true;
+const USE_MOCK_FALLBACK = false;
 
 const api = axios.create({
   baseURL: '/api',
