@@ -303,6 +303,20 @@
   color: var(--status-cancelled);
 }
 
+.dropdown-badge {
+  margin-left: auto;
+  background: #FF9F0D;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ══════════════════════════════════════════════
    Mobile Toggle & Mobile Menu
    ══════════════════════════════════════════════ */

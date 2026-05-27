@@ -332,8 +332,6 @@ const RestaurantDashboard = () => {
     { id: 'revenue', label: 'Revenue', icon: IndianRupee },
     { id: 'offers', label: 'Offers', icon: Tag },
     { id: 'reviews', label: 'Reviews', icon: Star },
-    { id: 'notifications', label: 'Notifications', icon: Bell, badge: 1 },
-    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   const orderTabsList = ['Pending', 'Accepted', 'Preparing', 'Ready', 'Delivered', 'Cancelled'];
@@ -375,10 +373,6 @@ const RestaurantDashboard = () => {
         </nav>
 
         <div className="sidebar-footer">
-          <button className="logout-btn" onClick={() => setIsDarkMode(!isDarkMode)} style={{marginBottom: '10px', background: 'transparent', color: 'inherit'}}>
-            <Moon size={18} />
-            <span>Dark Mode</span>
-          </button>
           <button className="logout-btn" onClick={handleLogout}>
             <LogOut size={18} />
             <span>Logout</span>

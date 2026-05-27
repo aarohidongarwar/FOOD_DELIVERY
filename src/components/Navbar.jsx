@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, User, LogOut, Search, MapPin, Menu, X, ChevronDown, Package, LayoutDashboard, Truck } from 'lucide-react';
+import { ShoppingCart, User, LogOut, Search, MapPin, Menu, X, ChevronDown, Package, LayoutDashboard, Truck, Bell, Settings, Moon } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import useCartStore from '../stores/cartStore';
 import './Navbar.css';
@@ -80,6 +80,7 @@ export default function Navbar({ onCartClick }) {
   }
 
   const isDashboard = ['/restaurant-dashboard', '/admin'].includes(location.pathname);
+  const isRestaurantDashboard = location.pathname === '/restaurant-dashboard';
   const isCustomerPortal = !user || user.role === 'customer';
 
   return (
@@ -159,7 +160,15 @@ export default function Navbar({ onCartClick }) {
                   {showDropdown && (
                     <div className="profile-dropdown animate-fade-in">
                       <Link to="/profile" className="dropdown-item"><User size={16} /> Profile</Link>
-                      <Link to="/orders" className="dropdown-item"><Package size={16} /> My Orders</Link>
+                      {isRestaurantDashboard ? (
+                        <>
+                          <button className="dropdown-item" onClick={() => { setShowDropdown(false); }}><Bell size={16} /> Notifications <span className="dropdown-badge">1</span></button>
+                          <button className="dropdown-item" onClick={() => { setShowDropdown(false); }}><Settings size={16} /> Settings</button>
+                          <button className="dropdown-item" onClick={() => { setShowDropdown(false); }}><Moon size={16} /> Dark Mode</button>
+                        </>
+                      ) : (
+                        <Link to="/orders" className="dropdown-item"><Package size={16} /> My Orders</Link>
+                      )}
                       <div className="dropdown-divider" />
                       <button className="dropdown-item dropdown-logout" onClick={handleLogout}><LogOut size={16} /> Logout</button>
                     </div>
@@ -214,7 +223,15 @@ export default function Navbar({ onCartClick }) {
           {user ? (
             <>
               <Link to="/profile" className="mobile-link"><User size={18} /> Profile</Link>
-              <Link to="/orders" className="mobile-link"><Package size={18} /> My Orders</Link>
+              {isRestaurantDashboard ? (
+                <>
+                  <button className="mobile-link" onClick={() => setMobileOpen(false)}><Bell size={18} /> Notifications <span className="dropdown-badge">1</span></button>
+                  <button className="mobile-link" onClick={() => setMobileOpen(false)}><Settings size={18} /> Settings</button>
+                  <button className="mobile-link" onClick={() => setMobileOpen(false)}><Moon size={18} /> Dark Mode</button>
+                </>
+              ) : (
+                <Link to="/orders" className="mobile-link"><Package size={18} /> My Orders</Link>
+              )}
               {user?.role === 'admin' && <Link to="/admin" className="mobile-link"><LayoutDashboard size={18} /> Admin Dashboard</Link>}
               {user?.role === 'driver' && <Link to="/driver" className="mobile-link"><Truck size={18} /> Deliveries</Link>}
               <div className="mobile-divider" />
