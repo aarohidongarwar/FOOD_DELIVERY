@@ -35,6 +35,7 @@ import useAuthStore from '../stores/authStore';
 import api from '../api';
 import { fetchOSRMRoute } from '../utils/osrm';
 import './RestaurantDashboard.css';
+import RestaurantOnboarding from './RestaurantOnboarding';
 
 // Fix Leaflet icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -446,6 +447,77 @@ const RestaurantDashboard = () => {
     if (stock <= 5) return { label: 'Low Stock', color: 'var(--ph-yellow)', bg: 'var(--ph-yellow-bg)' };
     return { label: 'In Stock', color: 'var(--ph-green)', bg: 'var(--ph-green-bg)' };
   };
+
+  if (isLoading) {
+    return (
+      <div className="partner-loading" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: '20px', background: '#f8f9fa' }}>
+        <div className="spinner" style={{ width: '50px', height: '50px', border: '5px solid #e9ecef', borderTop: '5px solid #ff4f5a', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <p style={{ fontFamily: 'var(--font-primary)', color: '#6c757d', fontWeight: '500' }}>Loading Partner Hub...</p>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (!restaurant || !restaurant.is_profile_complete) {
+    return (
+      <RestaurantOnboarding 
+        onComplete={async () => {
+          setIsLoading(true);
+          try {
+            const { data: restData } = await api.get('/restaurants/owner/me');
+            setRestaurant(restData);
+            
+            // Populate settings form
+            setSettingsForm({
+              owner_name: user?.name || '',
+              owner_phone: user?.phone || '',
+              owner_email: user?.email || '',
+              name: restData?.name || '',
+              cuisine_type: restData?.cuisine_type || '',
+              address: restData?.address || '',
+              delivery_time: restData?.delivery_time || '30-40 min',
+              delivery_fee: restData?.delivery_fee || 29,
+              min_order: restData?.min_order || 99,
+            });
+
+            if (restData) {
+              const [menuRes, ordRes] = await Promise.all([
+                api.get(`/menu/restaurant/${restData.id}`),
+                api.get(`/orders/restaurant/${restData.id}`)
+              ]);
+              
+              setProducts((menuRes.data || []).map(p => ({
+                ...p,
+                available: p.is_available === 1 || p.is_available === true,
+                stock: p.stock ?? 50
+              })));
+              
+              setOrdersData((ordRes.data || []).map(transformOrder));
+              
+              try {
+                const { data: restFull } = await api.get(`/restaurants/${restData.id}`);
+                if (restFull.reviews) setReviews(restFull.reviews);
+              } catch(e) {}
+              
+              try {
+                const { data: analyticsData } = await api.get(`/orders/restaurant/${restData.id}/analytics?days=30`);
+                setAnalytics(analyticsData);
+              } catch(e) { console.warn('Analytics fetch failed', e); }
+            }
+          } catch (err) {
+            console.error('Failed to reload dashboard data after onboarding', err);
+          } finally {
+            setIsLoading(false);
+          }
+        }}
+      />
+    );
+  }
 
   return (
     <div className={`partner-hub-layout ${isDarkMode ? 'dark-mode' : ''}`}>
