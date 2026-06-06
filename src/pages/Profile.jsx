@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Save } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Save, Store } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
+import api from '../api';
 import './Profile.css';
 
 export default function Profile() {
@@ -16,11 +17,29 @@ export default function Profile() {
   const [addAmount, setAddAmount] = useState('');
   const [addingFunds, setAddingFunds] = useState(false);
 
+  const [restaurantData, setRestaurantData] = useState(null);
+
   useEffect(() => {
     if (user?.role === 'customer') {
       fetchWallet();
+    } else if (user?.role === 'restaurant') {
+      api.get('/restaurants/owner/me').then(res => {
+        if (res.data && res.data.id) {
+          setRestaurantData(res.data);
+        }
+      }).catch(err => console.error(err));
     }
   }, [fetchWallet, user]);
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        phone: user.phone || '',
+        address: user.address || ''
+      });
+    }
+  }, [user]);
 
   const handleAddFunds = async () => {
     const amt = parseFloat(addAmount);
@@ -233,6 +252,67 @@ export default function Profile() {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {user?.role === 'restaurant' && restaurantData && (
+            <div className="profile-card mt-6" style={{ marginTop: '24px' }}>
+              <div className="pc-header">
+                <h3>Business Information</h3>
+              </div>
+              <div className="profile-info-grid">
+                <div className="pi-item full-width">
+                  <div className="pi-icon"><Store size={20} /></div>
+                  <div className="pi-content">
+                    <span className="pi-label">Business Name</span>
+                    <span className="pi-value">{restaurantData.name}</span>
+                  </div>
+                </div>
+                <div className="pi-item">
+                  <div className="pi-content">
+                    <span className="pi-label">Type</span>
+                    <span className="pi-value">{restaurantData.is_grocery ? 'Grocery Store' : 'Restaurant'} - {restaurantData.cuisine_type}</span>
+                  </div>
+                </div>
+                <div className="pi-item full-width">
+                  <div className="pi-content">
+                    <span className="pi-label">Business Address</span>
+                    <span className="pi-value">{restaurantData.address}</span>
+                  </div>
+                </div>
+                {restaurantData.registration_details?.fssaiLicense && (
+                  <div className="pi-item">
+                    <div className="pi-content">
+                      <span className="pi-label">FSSAI License</span>
+                      <span className="pi-value">{restaurantData.registration_details.fssaiLicense}</span>
+                    </div>
+                  </div>
+                )}
+                {restaurantData.registration_details?.gstNumber && (
+                  <div className="pi-item">
+                    <div className="pi-content">
+                      <span className="pi-label">GST Number</span>
+                      <span className="pi-value">{restaurantData.registration_details.gstNumber}</span>
+                    </div>
+                  </div>
+                )}
+                {restaurantData.registration_details?.panCard && (
+                  <div className="pi-item">
+                    <div className="pi-content">
+                      <span className="pi-label">PAN Card</span>
+                      <span className="pi-value">{restaurantData.registration_details.panCard}</span>
+                    </div>
+                  </div>
+                )}
+                {restaurantData.registration_details?.openingTime && (
+                  <div className="pi-item">
+                    <div className="pi-content">
+                      <span className="pi-label">Operating Hours</span>
+                      <span className="pi-value">{restaurantData.registration_details.openingTime} to {restaurantData.registration_details.closingTime}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

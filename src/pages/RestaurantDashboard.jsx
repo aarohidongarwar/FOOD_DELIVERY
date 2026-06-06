@@ -23,12 +23,60 @@ import {
   Info,
   Star,
   Download,
-  Moon
+  Moon,
+  User
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { io } from 'socket.io-client';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import useAuthStore from '../stores/authStore';
 import api from '../api';
+import { fetchOSRMRoute } from '../utils/osrm';
 import './RestaurantDashboard.css';
+
+// Fix Leaflet icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+const driverIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/2830/2830312.png',
+  iconSize: [38, 38],
+  iconAnchor: [19, 38],
+  popupAnchor: [0, -38]
+});
+
+const restaurantIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/3170/3170733.png',
+  iconSize: [38, 38],
+  iconAnchor: [19, 38],
+  popupAnchor: [0, -38]
+});
+
+function MapUpdater({ lat, lon }) {
+  const map = useMap();
+  useEffect(() => {
+    if (lat && lon) {
+      map.setView([lat, lon], 14);
+    }
+  }, [lat, lon, map]);
+  return null;
+}
+
+function MapBoundsUpdater({ bounds }) {
+  const map = useMap();
+  useEffect(() => {
+    if (bounds && bounds.length > 1) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, [bounds, map]);
+  return null;
+}
 
 const RestaurantDashboard = () => {
   const { user, logout } = useAuthStore();
@@ -51,6 +99,63 @@ const RestaurantDashboard = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsForm, setSettingsForm] = useState({});
+  const [socket, setSocket] = useState(null);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [trackingOrder, setTrackingOrder] = useState(null);
+  const [driverLocation, setDriverLocation] = useState(null);
+  const [osrmRoute, setOsrmRoute] = useState(null);
+  const [routeInfo, setRouteInfo] = useState(null);
+
+  useEffect(() => {
+    const s = io('/', { path: '/socket.io' });
+    setSocket(s);
+
+    if (user) {
+      s.emit('register', user.id);
+    }
+
+    s.on('driver-arrived-restaurant', (data) => {
+      setToastMessage(`Driver ${data.driverName} has arrived for Order #${data.orderId}!`);
+      setTimeout(() => setToastMessage(null), 5000);
+    });
+
+    s.on('driver-location-update', (data) => {
+      setDriverLocation(prev => {
+        // If we're tracking this specific order, update the map
+        if (data.orderId) {
+          return { lat: data.lat, lon: data.lon, orderId: data.orderId };
+        }
+        return prev;
+      });
+    });
+
+    return () => s.disconnect();
+  }, [user]);
+
+  useEffect(() => {
+    if (socket && trackingOrder) {
+      socket.emit('join-order', trackingOrder.id);
+    }
+  }, [socket, trackingOrder]);
+
+  // Fetch OSRM Route
+  useEffect(() => {
+    if (trackingOrder && driverLocation && restaurant?.latitude && restaurant?.longitude) {
+      // Driver to Restaurant
+      fetchOSRMRoute(
+        [driverLocation.lat, driverLocation.lon], 
+        [parseFloat(restaurant.latitude), parseFloat(restaurant.longitude)]
+      ).then(routeData => {
+        if (routeData) {
+          setOsrmRoute(routeData.coordinates);
+          setRouteInfo({ distance: routeData.distance, duration: routeData.duration });
+        }
+      });
+    } else {
+      setOsrmRoute(null);
+      setRouteInfo(null);
+    }
+  }, [trackingOrder, driverLocation?.lat, driverLocation?.lon, restaurant?.latitude, restaurant?.longitude]);
   
   // New Product Form State
   const [newProduct, setNewProduct] = useState({ name: '', description: '', price: 0, category: 'Main Course', stock: 50, available: true });
@@ -691,9 +796,20 @@ const RestaurantDashboard = () => {
                     <p className="f-o-customer">{order.customer} - {order.address}</p>
                     <p className="f-o-meta">{order.items} items &nbsp;&nbsp; <strong>₹{order.price}</strong> &nbsp;&nbsp; <span style={{color: 'var(--ph-text-muted)'}}>{order.time}</span></p>
                   </div>
-                  <button className="f-o-view-btn" onClick={() => setSelectedOrder(order)}>
-                    View <ChevronRight size={16} />
-                  </button>
+                  <div className="f-o-actions" style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+                    {order.status === 'ready' && (
+                      <button 
+                        className="btn-outline" 
+                        style={{padding: '8px 12px', fontSize: '0.85rem'}}
+                        onClick={() => setTrackingOrder(order)}
+                      >
+                        Track Driver
+                      </button>
+                    )}
+                    <button className="f-o-view-btn" onClick={() => setSelectedOrder(order)}>
+                      View <ChevronRight size={16} />
+                    </button>
+                  </div>
                 </div>
               ))}
               {ordersData.filter(o => o.status === orderTab.toLowerCase()).length === 0 && (
@@ -1297,6 +1413,88 @@ const RestaurantDashboard = () => {
                 <button type="button" className="btn-cancel" style={{width: '100%', justifyContent: 'center'}} onClick={() => setSelectedOrder(null)}>Close</button>
               )}
               <button type="button" className="btn-outline" onClick={handlePrintReceipt}>Print Receipt</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Driver Tracking Modal */}
+      {trackingOrder && (
+        <div className="modal-overlay fade-in">
+          <div className="modal-content scale-in" style={{width: '90%', maxWidth: '800px', height: '80vh', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column'}}>
+            <div className="modal-header" style={{padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+              <div>
+                <h2 style={{margin: '0 0 4px 0', fontSize: '1.25rem'}}>Track Driver</h2>
+                <p style={{margin: 0, color: 'var(--ph-text-muted)', fontSize: '0.9rem'}}>Order #{trackingOrder.id.substring(0,8)} - {trackingOrder.customer}</p>
+              </div>
+              <button className="btn-icon" onClick={() => { setTrackingOrder(null); setDriverLocation(null); }}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{flex: 1, position: 'relative', backgroundColor: '#f1f5f9'}}>
+              {driverLocation && driverLocation.lat && driverLocation.lon ? (() => {
+                const rLat = restaurant?.latitude ? parseFloat(restaurant.latitude) : null;
+                const rLon = restaurant?.longitude ? parseFloat(restaurant.longitude) : null;
+                const bounds = osrmRoute && osrmRoute.length > 1 ? osrmRoute : [];
+                if (bounds.length === 0 && rLat && rLon) {
+                  bounds.push([driverLocation.lat, driverLocation.lon], [rLat, rLon]);
+                }
+
+                return (
+                  <>
+                    {/* Swiggy Style Info Panel */}
+                    {routeInfo && (
+                      <div className="osrm-info-panel scale-in">
+                        <div className="osrm-info-item">
+                          <span className="osrm-info-label">ETA</span>
+                          <span className="osrm-info-value">{Math.round(routeInfo.duration / 60)} min</span>
+                        </div>
+                        <div className="osrm-info-divider"></div>
+                        <div className="osrm-info-item">
+                          <span className="osrm-info-label">Distance</span>
+                          <span className="osrm-info-value">{(routeInfo.distance / 1000).toFixed(1)} km</span>
+                        </div>
+                      </div>
+                    )}
+                    <MapContainer center={[driverLocation.lat, driverLocation.lon]} zoom={15} style={{width: '100%', height: '100%'}} zoomControl={false}>
+                      <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+                      
+                      {/* Driver Marker */}
+                      <Marker position={[driverLocation.lat, driverLocation.lon]} icon={driverIcon}>
+                        <Popup>Driver is here</Popup>
+                      </Marker>
+                      
+                      {/* Restaurant Marker */}
+                      {rLat && rLon && (
+                        <Marker position={[rLat, rLon]} icon={restaurantIcon}>
+                          <Popup>Your Restaurant</Popup>
+                        </Marker>
+                      )}
+
+                      {/* Route Polyline */}
+                      {osrmRoute && osrmRoute.length > 1 ? (
+                        <>
+                          <Polyline positions={osrmRoute} color="#1E293B" weight={6} opacity={0.3} lineJoin="round" lineCap="round" />
+                          <Polyline positions={osrmRoute} color="#F59E0B" weight={4} opacity={1} lineJoin="round" lineCap="round" />
+                          <MapBoundsUpdater bounds={osrmRoute} />
+                        </>
+                      ) : bounds.length > 1 ? (
+                        <>
+                          <Polyline positions={bounds} color="#F59E0B" weight={5} opacity={0.7} dashArray="10, 10" />
+                          <MapBoundsUpdater bounds={bounds} />
+                        </>
+                      ) : (
+                        <MapUpdater lat={driverLocation.lat} lon={driverLocation.lon} />
+                      )}
+                    </MapContainer>
+                  </>
+                );
+              })() : (
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: '16px'}}>
+                  <div className="spinner"></div>
+                  <p style={{color: 'var(--ph-text-muted)'}}>Waiting for driver's GPS location...</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

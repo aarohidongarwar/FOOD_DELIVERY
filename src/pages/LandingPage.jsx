@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion';
+import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
   ShoppingBag, 
@@ -6,15 +7,62 @@ import {
   Truck, 
   ShieldCheck, 
   ChevronRight, 
+  ChevronDown,
   MapPin, 
   Clock, 
   Zap,
   Star,
-  CheckCircle2
+  CheckCircle2,
+  X
 } from 'lucide-react';
+import useAuthStore from '../stores/authStore';
 import './LandingPage.css';
 
 export default function LandingPage() {
+  const { user, silentLogout } = useAuthStore();
+  
+  // Auto-logout when a logged-in user reaches the landing page
+  useEffect(() => {
+    if (user) {
+      silentLogout();
+    }
+  }, [user, silentLogout]);
+
+  const [showPartnerOptions, setShowPartnerOptions] = useState(false);
+  const partnerRef = useRef(null);
+
+  const partnerOptions = [
+    {
+      id: 'restaurant',
+      title: 'Restaurant Partner',
+      subtitle: 'Grow your business with us',
+      icon: <Utensils size={28} />,
+      color: '#E91E63',
+      bg: '#FCE4EC',
+      link: '/partnership-type',
+      buttonText: 'Register Shop'
+    },
+    {
+      id: 'driver',
+      title: 'Delivery Partner',
+      subtitle: 'Earn with every delivery',
+      icon: <Truck size={28} />,
+      color: '#4CAF50',
+      bg: '#E8F5E9',
+      link: '/rider/login',
+      buttonText: 'Join Fleet'
+    }
+  ];
+
+  const handlePartnerToggle = () => {
+    setShowPartnerOptions(prev => !prev);
+    if (!showPartnerOptions) {
+      setTimeout(() => {
+        partnerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  };
+
   const fadeInUp = {
     initial: { opacity: 0, y: 30 },
     whileInView: { opacity: 1, y: 0 },
@@ -49,10 +97,79 @@ export default function LandingPage() {
               <Link to="/home" className="btn btn-primary btn-lg lp-cta">
                 Order Now <ChevronRight size={20} />
               </Link>
-              <Link to="/onboarding" className="btn btn-secondary btn-lg lp-cta-secondary">
+              <button 
+                className={`btn btn-secondary btn-lg lp-cta-secondary ${showPartnerOptions ? 'lp-cta-secondary--active' : ''}`}
+                onClick={handlePartnerToggle}
+              >
                 Partner with us
-              </Link>
+                <motion.span
+                  animate={{ rotate: showPartnerOptions ? 180 : 0 }}
+                  transition={{ duration: 0.3 }}
+                  style={{ display: 'inline-flex', marginLeft: 8 }}
+                >
+                  <ChevronDown size={20} />
+                </motion.span>
+              </button>
             </div>
+
+            {/* Inline Partner Options */}
+            <AnimatePresence>
+              {showPartnerOptions && (
+                <motion.div
+                  ref={partnerRef}
+                  className="lp-partner-panel"
+                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                  animate={{ opacity: 1, height: 'auto', marginTop: 32 }}
+                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                  transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+                >
+                  <div className="lp-partner-panel-inner">
+                    <div className="lp-partner-panel-header">
+                      <h3>Choose your path</h3>
+                      <button className="lp-partner-close" onClick={() => setShowPartnerOptions(false)}>
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <div className="lp-partner-grid">
+                      {partnerOptions.map((option, i) => (
+                        <motion.div
+                          key={option.id}
+                          className="lp-partner-card"
+                          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          transition={{ duration: 0.4, delay: i * 0.08, ease: 'easeOut' }}
+                          whileHover={{ 
+                            y: -6, 
+                            boxShadow: `0 12px 30px ${option.color}25`,
+                            borderColor: option.color 
+                          }}
+                        >
+                          <div 
+                            className="lp-partner-card-icon" 
+                            style={{ backgroundColor: option.bg, color: option.color }}
+                          >
+                            {option.icon}
+                          </div>
+                          <div className="lp-partner-card-text">
+                            <h4>{option.title}</h4>
+                            <p>{option.subtitle}</p>
+                          </div>
+                          <Link 
+                            to={option.link} 
+                            className="lp-partner-card-btn"
+                            style={{ backgroundColor: option.color }}
+                          >
+                            {option.buttonText}
+                            <ChevronRight size={16} />
+                          </Link>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
           
           <motion.div 
@@ -242,44 +359,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Partners Section */}
-      <section className="lp-roles-section">
-        <div className="container">
-          <motion.div className="lp-section-header" {...fadeInUp}>
-            <h2>Join the Ecosystem</h2>
-            <p>There's a place for everyone at QuickBite</p>
-          </motion.div>
-          
-          <div className="lp-roles-grid">
-            <motion.div className="lp-role-card" {...fadeInUp} transition={{ delay: 0.1 }}>
-              <div className="lp-role-icon bg-orange-light">
-                <Utensils size={40} className="text-orange" />
-              </div>
-              <h3 className="lp-role-title">Restaurants</h3>
-              <p className="lp-role-desc">Boost your sales by reaching thousands of new customers in your area.</p>
-              <Link to="/register-restaurant" className="lp-cta-text">Join as Partner <ChevronRight size={16} /></Link>
-            </motion.div>
-
-            <motion.div className="lp-role-card" {...fadeInUp} transition={{ delay: 0.2 }}>
-              <div className="lp-role-icon bg-green-light">
-                <Truck size={40} className="text-green" />
-              </div>
-              <h3 className="lp-role-title">Drivers</h3>
-              <p className="lp-role-desc">Earn money on your own schedule by delivering delicious food.</p>
-              <Link to="/rider/login" className="lp-cta-text">Drive with us <ChevronRight size={16} /></Link>
-            </motion.div>
-
-            <motion.div className="lp-role-card" {...fadeInUp} transition={{ delay: 0.3 }}>
-              <div className="lp-role-icon bg-blue-light">
-                <ShoppingBag size={40} className="text-blue" />
-              </div>
-              <h3 className="lp-role-title">Customers</h3>
-              <p className="lp-role-desc">Explore wide variety of cuisines and get them delivered fast.</p>
-              <Link to="/home" className="lp-cta-text">Start Ordering <ChevronRight size={16} /></Link>
-            </motion.div>
-          </div>
-        </div>
-      </section>
 
       {/* Final CTA */}
       <section className="lp-final-cta">

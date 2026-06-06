@@ -20,7 +20,7 @@ router.get('/owner/me', authenticateToken, requireRole('restaurant'), async (req
   try {
     const [restaurants] = await db.execute('SELECT * FROM restaurants WHERE owner_id = ?', [req.user.id]);
     const restaurant = restaurants[0];
-    if (!restaurant) return res.status(404).json({ error: 'Restaurant profile not found' });
+    if (!restaurant) return res.json({ is_profile_complete: 0 });
     
     // Parse registration details if present
     if (restaurant.registration_details) {
@@ -53,7 +53,7 @@ router.post('/owner/register', authenticateToken, requireRole('restaurant'), asy
     if (existing) {
       // Update existing
       await db.execute(
-        `UPDATE restaurants SET name = ?, address = ?, cuisine_type = ?, registration_details = ? WHERE owner_id = ?`,
+        `UPDATE restaurants SET name = ?, address = ?, cuisine_type = ?, registration_details = ?, is_profile_complete = 1 WHERE owner_id = ?`,
         [name, address, cuisine_type || 'General', regDetailsString, req.user.id]
       );
       
@@ -65,8 +65,8 @@ router.post('/owner/register', authenticateToken, requireRole('restaurant'), asy
       // Create new
       const id = uuidv4();
       await db.execute(
-        `INSERT INTO restaurants (id, owner_id, name, description, address, cuisine_type, rating, total_ratings, is_active, is_grocery, registration_details)
-         VALUES (?, ?, ?, ?, ?, ?, 0.0, 0, 0, 0, ?)`,
+        `INSERT INTO restaurants (id, owner_id, name, description, address, cuisine_type, rating, total_ratings, is_active, is_grocery, registration_details, is_profile_complete)
+         VALUES (?, ?, ?, ?, ?, ?, 0.0, 0, 1, 0, ?, 1)`,
         [id, req.user.id, name, registration_details?.businessType || 'New Restaurant Partner', address, cuisine_type || 'General', regDetailsString]
       );
       

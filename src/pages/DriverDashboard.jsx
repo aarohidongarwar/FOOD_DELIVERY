@@ -24,11 +24,12 @@ import {
   X,
   Navigation
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import { io } from 'socket.io-client';
 import useAuthStore from '../stores/authStore';
 import api from '../api';
+import { fetchOSRMRoute, interpolateRoute } from '../utils/osrm';
 import 'leaflet/dist/leaflet.css';
 import './DriverDashboard.css';
 
@@ -41,7 +42,7 @@ L.Icon.Default.mergeOptions({
 });
 
 const driverIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/3135/3135755.png',
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/2830/2830312.png',
   iconSize: [38, 38],
   iconAnchor: [19, 38],
   popupAnchor: [0, -38]
@@ -71,6 +72,16 @@ function MapUpdater({ lat, lon }) {
   return null;
 }
 
+function MapBoundsUpdater({ bounds }) {
+  const map = useMap();
+  useEffect(() => {
+    if (bounds && bounds.length > 0) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, [bounds, map]);
+  return null;
+}
+
 export default function DriverDashboard() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
@@ -82,6 +93,14 @@ export default function DriverDashboard() {
   const [currentLocation, setCurrentLocation] = useState(null);
   const [activeDeliveries, setActiveDeliveries] = useState([]);
   const [socket, setSocket] = useState(null);
+  const [simulatingOrder, setSimulatingOrder] = useState(null);
+  const [otpType, setOtpType] = useState('delivery');
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [newRequest, setNewRequest] = useState(null);
+  const [showNavModal, setShowNavModal] = useState(false);
+  const [navOrder, setNavOrder] = useState(null);
+  const [osrmRoute, setOsrmRoute] = useState(null);
+  const [routeInfo, setRouteInfo] = useState(null);
   
   const [stats, setStats] = useState({
     todayEarnings: 75,
@@ -94,6 +113,30 @@ export default function DriverDashboard() {
     totalEarningsBreakdown: 75,
     totalDeliveriesBreakdown: 2
   });
+
+  // Fetch OSRM route when navigation modal opens or destination changes
+  useEffect(() => {
+    if (showNavModal && navOrder && currentLocation) {
+      const isDelivery = navOrder.status === 'On The Way';
+      const destLat = parseFloat(isDelivery ? (navOrder.delivery_lat || navOrder.customer_lat) : navOrder.restaurant_lat) || (isDelivery ? 21.14 : 21.1458);
+      const destLon = parseFloat(isDelivery ? (navOrder.delivery_lon || navOrder.customer_lon) : navOrder.restaurant_lon) || (isDelivery ? 79.08 : 79.0882);
+
+      fetchOSRMRoute([currentLocation.lat, currentLocation.lon], [destLat, destLon])
+        .then(routeData => {
+          if (routeData) {
+            setOsrmRoute(routeData.coordinates);
+            setRouteInfo({ distance: routeData.distance, duration: routeData.duration });
+          } else {
+            // Fallback
+            setOsrmRoute([[currentLocation.lat, currentLocation.lon], [destLat, destLon]]);
+            setRouteInfo(null);
+          }
+        });
+    } else {
+      setOsrmRoute(null);
+      setRouteInfo(null);
+    }
+  }, [showNavModal, navOrder]); // Deliberately omit currentLocation to avoid re-fetching on every tick
 
   const [orders, setOrders] = useState([]);
 
@@ -159,8 +202,16 @@ export default function DriverDashboard() {
     }
   };
 
+  const fetchPendingAssignment = async () => {
+    try {
+      const { data } = await api.get('/delivery/pending-assignment');
+      if (data) setNewRequest(data);
+    } catch(err) {}
+  };
+
   useEffect(() => {
     fetchStats();
+    fetchPendingAssignment();
     
     // Connect socket
     const s = io('/', { path: '/socket.io' });
@@ -169,6 +220,17 @@ export default function DriverDashboard() {
     if (user) {
       s.emit('register', user.id);
     }
+
+    s.on('new-order-request', (data) => {
+      setNewRequest(data);
+    });
+
+    s.on('order-claimed', (data) => {
+      setNewRequest(prev => {
+        if (prev && prev.orderId === data.orderId) return null;
+        return prev;
+      });
+    });
 
     return () => s.disconnect();
   }, [user]);
@@ -218,12 +280,33 @@ export default function DriverDashboard() {
         phone: order.customer_phone,
         fee: order.delivery_fee,
         expanded: false,
-        status: order.status === 'out_for_delivery' ? 'On The Way' : 'Preparing'
+        status: order.status === 'out_for_delivery' ? 'On The Way' : 'Preparing/Assigned'
       })));
       setStats(prev => ({ ...prev, activeOrders: data.length }));
     } catch (err) {
       console.error("Failed to fetch active deliveries", err);
     }
+  };
+
+  const handleAcceptRequest = async () => {
+    try {
+      await api.post(`/delivery/accept/${newRequest.orderId}`);
+      setNewRequest(null);
+      fetchActiveDeliveries();
+      alert('Order Accepted!');
+    } catch (err) {
+      if (err.response && err.response.status === 400) {
+        alert('Ah! Another delivery partner already claimed this order.');
+      } else {
+        alert('Failed to accept order. It may have timed out.');
+      }
+      setNewRequest(null);
+    }
+  };
+
+  const handleDeclineRequest = async () => {
+    // In a broadcast model, declining simply dismisses the modal locally
+    setNewRequest(null);
   };
 
   const fetchHistory = async () => {
@@ -285,26 +368,119 @@ export default function DriverDashboard() {
     alert('Password updated successfully!');
   };
 
-  const openOtpModal = (id) => {
+  const openOtpModal = (id, type) => {
     setSelectedOrderId(id);
+    setOtpType(type);
     setShowOtpModal(true);
     setOtpInput('');
   };
 
   const handleVerifyDelivery = async () => {
-    if (otpInput.length === 4 || otpInput === '') { // Allow empty for demo
+    if (otpInput.length === 6 || otpInput === '') { // Allow empty for demo
       try {
-        await api.put(`/orders/${selectedOrderId}/status`, { status: 'delivered' });
-        alert(`Order delivered successfully!`);
+        if (otpType === 'pickup') {
+          await api.post(`/delivery/pickup/${selectedOrderId}`, { otp: otpInput });
+          alert(`Order picked up successfully!`);
+        } else {
+          await api.post(`/delivery/deliver/${selectedOrderId}`, { otp: otpInput });
+          alert(`Order delivered successfully!`);
+          setActiveDeliveries(activeDeliveries.filter(o => o.id !== selectedOrderId));
+          fetchStats(); // Update earnings
+        }
         setShowOtpModal(false);
-        setActiveDeliveries(activeDeliveries.filter(o => o.id !== selectedOrderId));
-        fetchStats(); // Update earnings
+        fetchActiveDeliveries();
       } catch (err) {
-        alert('Failed to update status');
+        alert('Failed to verify OTP');
       }
     } else {
-      alert('Please enter a valid 4-digit OTP');
+      alert('Please enter a valid 6-digit OTP');
     }
+  };
+
+  const simulateJourney = (order) => {
+    if (!currentLocation) {
+      alert("No current location known to start simulation. Make sure you are online and have location permission.");
+      return;
+    }
+    
+    if (simulatingOrder) return;
+    setSimulatingOrder(order.id);
+
+    let targetLat, targetLon;
+    const stat = order.status.toLowerCase();
+    
+    // If food is being prepared/pending, drive to restaurant. Else, drive to customer.
+    if (['pending', 'confirmed', 'accepted', 'preparing'].includes(stat)) {
+      targetLat = parseFloat(order.restaurant_lat);
+      targetLon = parseFloat(order.restaurant_lon);
+    } else {
+      targetLat = parseFloat(order.delivery_lat || order.customer_lat);
+      targetLon = parseFloat(order.delivery_lon || order.customer_lon);
+    }
+
+    if (!targetLat || !targetLon || isNaN(targetLat) || isNaN(targetLon)) {
+      // Fallback destination coordinates if null in DB to allow simulation to proceed
+      targetLat = parseFloat(order.restaurant_lat) - 0.005 || 21.1458;
+      targetLon = parseFloat(order.restaurant_lon) - 0.005 || 79.0882;
+      console.log('Using fallback coordinates for simulation:', targetLat, targetLon);
+    }
+
+    const steps = 30; // 30 steps simulation
+    let currentStep = 0;
+    const startLat = currentLocation.lat;
+    const startLon = currentLocation.lon;
+    
+    // Smooth interpolation settings
+    const tickMs = 200; 
+    const totalSimDurationMs = 10000; // 10 seconds to reach destination
+    const totalSteps = totalSimDurationMs / tickMs;
+    
+    // We already have an OSRM route if the nav modal is open. But simulateJourney can be triggered outside the modal.
+    // Let's fetch it if needed, or use a straight line if not available immediately.
+    const routePromise = osrmRoute && showNavModal 
+      ? Promise.resolve({ coordinates: osrmRoute }) 
+      : fetchOSRMRoute([startLat, startLon], [targetLat, targetLon]);
+
+    routePromise.then(routeData => {
+      let pathPoints;
+      if (routeData && routeData.coordinates) {
+        pathPoints = interpolateRoute(routeData.coordinates, totalSteps);
+      } else {
+        pathPoints = interpolateRoute([[startLat, startLon], [targetLat, targetLon]], totalSteps);
+      }
+
+      let currentStep = 0;
+      
+      const interval = setInterval(() => {
+        if (currentStep >= pathPoints.length) {
+          clearInterval(interval);
+          setSimulatingOrder(null);
+          return;
+        }
+        
+        const newLat = pathPoints[currentStep][0];
+        const newLon = pathPoints[currentStep][1];
+        
+        const loc = { lat: newLat, lon: newLon };
+        setCurrentLocation(loc);
+        
+        // Only emit socket events every ~1 second to prevent flooding the backend
+        if (socket && currentStep % (1000 / tickMs) === 0) {
+          socket.emit('driver-location', {
+            orderId: order.id,
+            lat: newLat,
+            lon: newLon,
+            restaurantLat: parseFloat(order.restaurant_lat),
+            restaurantLon: parseFloat(order.restaurant_lon),
+            deliveryLat: parseFloat(order.delivery_lat || order.customer_lat),
+            deliveryLon: parseFloat(order.delivery_lon || order.customer_lon),
+            status: order.status,
+            driverName: profileData.fullName
+          });
+        }
+        currentStep++;
+      }, tickMs);
+    });
   };
 
   const unreadCount = notifications.filter(n => n.unread).length;
@@ -395,7 +571,7 @@ export default function DriverDashboard() {
             </h1>
             <p>
               {activeTab === 'dashboard' && `Welcome back, ${user?.name?.split(' ')[0] || 'Arjun'}`}
-              {activeTab === 'orders' && `${orders.length} orders found`}
+              {activeTab === 'orders' && `${activeDeliveries.length} active orders`}
               {activeTab === 'earnings' && 'Track your delivery income'}
               {activeTab === 'notifications' && `${unreadCount} unread`}
               {activeTab === 'profile' && 'Manage your account details'}
@@ -544,13 +720,51 @@ export default function DriverDashboard() {
                       </div>
                     </div>
 
-                    {order.status === 'On The Way' && (
+                    {order.status === 'On The Way' ? (
                       <div className="order-actions-row">
                         <button 
                           className="deliver-otp-btn"
-                          onClick={() => openOtpModal(order.id)}
+                          onClick={() => openOtpModal(order.id, 'delivery')}
                         >
                           Deliver (OTP)
+                        </button>
+                        <button 
+                          className="btn-outline"
+                          onClick={() => simulateJourney(order)}
+                          disabled={simulatingOrder === order.id}
+                        >
+                          {simulatingOrder === order.id ? 'Simulating...' : 'Simulate GPS to Customer'}
+                        </button>
+                        <button 
+                          className="btn-outline nav-icon-btn"
+                          onClick={() => { setNavOrder(order); setShowNavModal(true); }}
+                          title="Open Navigation"
+                        >
+                          <Navigation size={20} className="text-blue" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="order-actions-row">
+                        <button 
+                          className="deliver-otp-btn"
+                          style={{backgroundColor: 'var(--ph-orange)', borderColor: 'var(--ph-orange)'}}
+                          onClick={() => openOtpModal(order.id, 'pickup')}
+                        >
+                          Pickup (OTP)
+                        </button>
+                        <button 
+                          className="btn-outline"
+                          onClick={() => simulateJourney(order)}
+                          disabled={simulatingOrder === order.id}
+                        >
+                          {simulatingOrder === order.id ? 'Driving to Restaurant...' : 'Simulate GPS to Restaurant'}
+                        </button>
+                        <button 
+                          className="btn-outline nav-icon-btn"
+                          onClick={() => { setNavOrder(order); setShowNavModal(true); }}
+                          title="Open Navigation"
+                        >
+                          <Navigation size={20} className="text-orange" />
                         </button>
                       </div>
                     )}
@@ -864,19 +1078,19 @@ export default function DriverDashboard() {
             
             <div className="modal-header">
               <div className="success-icon-circle">
-                <CheckCircle2 size={28} color="#10B981" />
+                <CheckCircle2 size={28} color={otpType === 'pickup' ? '#F59E0B' : '#10B981'} />
               </div>
-              <h2>Verify Delivery OTP</h2>
+              <h2>Verify {otpType === 'pickup' ? 'Pickup' : 'Delivery'} OTP</h2>
             </div>
 
             <div className="modal-body">
-              <p>Enter the 4-digit OTP provided by the customer for order <strong>{selectedOrderId}</strong></p>
+              <p>Enter the 6-digit OTP provided by the {otpType === 'pickup' ? 'Restaurant' : 'Customer'} for order <strong>{selectedOrderId?.substring(0,8)}</strong></p>
               
               <div className="otp-input-wrapper">
                 <input 
                   type="text" 
-                  maxLength="4"
-                  placeholder="Enter 4-digit OTP"
+                  maxLength="6"
+                  placeholder="Enter 6-digit OTP"
                   value={otpInput}
                   onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
                   className="otp-input-field"
@@ -885,10 +1099,145 @@ export default function DriverDashboard() {
 
               <button 
                 className="verify-btn"
+                style={{ backgroundColor: otpType === 'pickup' ? '#F59E0B' : '#10B981' }}
                 onClick={handleVerifyDelivery}
               >
-                Verify & Complete Delivery
+                {otpType === 'pickup' ? 'Verify & Confirm Pickup' : 'Verify & Complete Delivery'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Request Modal */}
+      {newRequest && (
+        <div className="modal-overlay fade-in">
+          <div className="modal-content scale-in" style={{maxWidth: '400px', textAlign: 'center', padding: '32px 24px'}}>
+            <div style={{background: 'var(--ph-orange-bg)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto'}}>
+              <Bell size={32} color="var(--ph-orange)" />
+            </div>
+            <h2 style={{margin: '0 0 8px 0'}}>New Delivery Request!</h2>
+            <h3 style={{margin: '0 0 16px 0', color: 'var(--ph-text-muted)'}}>{newRequest.restaurant}</h3>
+            
+            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '24px', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
+              <div style={{textAlign: 'left'}}>
+                <span style={{fontSize: '0.85rem', color: 'var(--ph-text-muted)'}}>Distance</span>
+                <p style={{margin: '4px 0 0 0', fontWeight: 'bold'}}>{(newRequest.distance / 1000).toFixed(1)} km</p>
+              </div>
+              <div style={{textAlign: 'right'}}>
+                <span style={{fontSize: '0.85rem', color: 'var(--ph-text-muted)'}}>Est. Earning</span>
+                <p style={{margin: '4px 0 0 0', fontWeight: 'bold', color: 'var(--ph-green)'}}>₹{newRequest.fee}</p>
+              </div>
+            </div>
+            
+            <div style={{display: 'flex', gap: '12px'}}>
+              <button className="btn-cancel" style={{flex: 1}} onClick={handleDeclineRequest}>Decline</button>
+              <button className="btn-primary" style={{flex: 1, backgroundColor: 'var(--ph-green)'}} onClick={handleAcceptRequest}>Accept</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Navigation Modal */}
+      {showNavModal && navOrder && (
+        <div className="nav-modal-overlay fade-in">
+          <div className="nav-modal-content scale-in">
+            <button className="modal-close" onClick={() => { setShowNavModal(false); setNavOrder(null); }}>
+              <X size={24} color="#333" />
+            </button>
+            
+            <div className="nav-modal-header">
+              <h2>Navigate to {navOrder.status === 'On The Way' ? 'Customer' : 'Restaurant'}</h2>
+              <p>{navOrder.status === 'On The Way' ? navOrder.delivery : navOrder.pickup}</p>
+            </div>
+
+            <div className="nav-map-container">
+              {currentLocation ? (() => {
+                const isDelivery = navOrder.status === 'On The Way';
+                const destLat = parseFloat(isDelivery ? (navOrder.delivery_lat || navOrder.customer_lat) : navOrder.restaurant_lat) || (isDelivery ? 21.14 : 21.1458);
+                const destLon = parseFloat(isDelivery ? (navOrder.delivery_lon || navOrder.customer_lon) : navOrder.restaurant_lon) || (isDelivery ? 79.08 : 79.0882);
+                
+                const bounds = osrmRoute && osrmRoute.length > 0 
+                  ? osrmRoute 
+                  : [
+                      [currentLocation.lat, currentLocation.lon],
+                      [destLat, destLon]
+                    ];
+
+                return (
+                  <div style={{width: '100%', height: '100%', position: 'relative'}}>
+                    {/* Swiggy Style Info Panel */}
+                    {routeInfo && (
+                      <div className="osrm-info-panel scale-in">
+                        <div className="osrm-info-item">
+                          <span className="osrm-info-label">ETA</span>
+                          <span className="osrm-info-value">{Math.round(routeInfo.duration / 60)} min</span>
+                        </div>
+                        <div className="osrm-info-divider"></div>
+                        <div className="osrm-info-item">
+                          <span className="osrm-info-label">Distance</span>
+                          <span className="osrm-info-value">{(routeInfo.distance / 1000).toFixed(1)} km</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <MapContainer center={[currentLocation.lat, currentLocation.lon]} zoom={15} className="nav-leaflet-map" zoomControl={false}>
+                      <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+                      
+                      {/* Driver Marker with animation */}
+                      <Marker position={[currentLocation.lat, currentLocation.lon]} icon={driverIcon}>
+                        <Popup>You are here</Popup>
+                      </Marker>
+
+                      {/* Destination Marker */}
+                      <Marker position={[destLat, destLon]} icon={isDelivery ? customerIcon : restaurantIcon}>
+                        <Popup>{isDelivery ? navOrder.customer : navOrder.restaurant}</Popup>
+                      </Marker>
+
+                      {/* OSRM Route Polyline */}
+                      {osrmRoute && (
+                        <>
+                          <Polyline positions={osrmRoute} color="#1E293B" weight={6} opacity={0.3} lineJoin="round" lineCap="round" />
+                          <Polyline positions={osrmRoute} color={isDelivery ? "#10B981" : "#F59E0B"} weight={4} opacity={1} lineJoin="round" lineCap="round" />
+                        </>
+                      )}
+
+                      <MapBoundsUpdater bounds={bounds} />
+                    </MapContainer>
+                  </div>
+                );
+              })() : (
+                <div className="nav-map-loading">Waiting for GPS signal...</div>
+              )}
+            </div>
+
+            <div className="nav-modal-footer">
+              <button 
+                className="btn-outline"
+                onClick={() => simulateJourney(navOrder)}
+                disabled={simulatingOrder === navOrder.id}
+                style={{ flex: 1 }}
+              >
+                {simulatingOrder === navOrder.id ? 'Simulating...' : 'Simulate GPS'}
+              </button>
+
+              {navOrder.status === 'On The Way' ? (
+                <button 
+                  className="deliver-otp-btn"
+                  onClick={() => { setShowNavModal(false); openOtpModal(navOrder.id, 'delivery'); }}
+                  style={{ flex: 1 }}
+                >
+                  Deliver (OTP)
+                </button>
+              ) : (
+                <button 
+                  className="deliver-otp-btn"
+                  style={{backgroundColor: 'var(--ph-orange)', borderColor: 'var(--ph-orange)', flex: 1}}
+                  onClick={() => { setShowNavModal(false); openOtpModal(navOrder.id, 'pickup'); }}
+                >
+                  Pickup (OTP)
+                </button>
+              )}
             </div>
           </div>
         </div>

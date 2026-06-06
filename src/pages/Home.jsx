@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, MapPin, ChevronRight, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RestaurantCard, RestaurantCardSkeleton, LocationPopup } from '../components';
+import { RestaurantCard, RestaurantCardSkeleton } from '../components';
 import useRestaurantStore from '../stores/restaurantStore';
 import useLocationStore from '../stores/locationStore';
 import './Home.css';
@@ -101,9 +101,6 @@ export default function Home() {
 
   return (
     <div className="home-page">
-      {/* Location Permission Popup */}
-      <LocationPopup />
-
       {/* Hero Section */}
       <section className="hero-section">
         <div className="container hero-container">

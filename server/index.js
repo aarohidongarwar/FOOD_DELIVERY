@@ -41,7 +41,20 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Socket.IO
+// Haversine distance calculation in meters
+function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // Radius of the earth in m
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
+  return R * c; 
+}
+
+const notifiedOrders = new Set();
 const connectedUsers = new Map();
 
 io.on('connection', (socket) => {
@@ -65,6 +78,24 @@ io.on('connection', (socket) => {
         lon: data.lon,
         orderId: data.orderId
       });
+
+      // Geofencing logic - notify restaurant
+      if (data.restaurantLat && data.restaurantLon && ['pending', 'confirmed', 'accepted', 'preparing', 'Preparing'].includes(data.status)) {
+        const distRest = getDistanceFromLatLonInMeters(data.lat, data.lon, data.restaurantLat, data.restaurantLon);
+        if (distRest < 50 && !notifiedOrders.has(`${data.orderId}-restaurant`)) {
+          io.emit('driver-arrived-restaurant', { orderId: data.orderId, driverName: data.driverName || 'Driver' });
+          notifiedOrders.add(`${data.orderId}-restaurant`);
+        }
+      }
+
+      // Geofencing logic - notify customer
+      if (data.deliveryLat && data.deliveryLon && ['out_for_delivery', 'Ready', 'On The Way'].includes(data.status)) {
+        const distCust = getDistanceFromLatLonInMeters(data.lat, data.lon, data.deliveryLat, data.deliveryLon);
+        if (distCust < 50 && !notifiedOrders.has(`${data.orderId}-customer`)) {
+          io.to(`order-${data.orderId}`).emit('driver-approaching-customer', { orderId: data.orderId });
+          notifiedOrders.add(`${data.orderId}-customer`);
+        }
+      }
     }
   });
 

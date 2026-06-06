@@ -1,9 +1,25 @@
 import { create } from 'zustand';
 
+// Get current logged-in user's ID for scoping cart data
+const getUserId = () => {
+  try {
+    const userStr = localStorage.getItem('quickbite_user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      return user?.id || 'guest';
+    }
+  } catch { }
+  return 'guest';
+};
+
+const getCartKey = () => `quickbite_cart_${getUserId()}`;
+const getRestaurantKey = () => `quickbite_cart_restaurant_${getUserId()}`;
+const getRestaurantNameKey = () => `quickbite_cart_restaurant_name_${getUserId()}`;
+
 const useCartStore = create((set, get) => ({
-  items: JSON.parse(localStorage.getItem('quickbite_cart') || '[]'),
-  restaurantId: localStorage.getItem('quickbite_cart_restaurant') || null,
-  restaurantName: localStorage.getItem('quickbite_cart_restaurant_name') || '',
+  items: JSON.parse(localStorage.getItem(getCartKey()) || '[]'),
+  restaurantId: localStorage.getItem(getRestaurantKey()) || null,
+  restaurantName: localStorage.getItem(getRestaurantNameKey()) || '',
   deliveryFee: 29,
 
   addItem: (item, restaurantId, restaurantName) => {
@@ -35,19 +51,19 @@ const useCartStore = create((set, get) => ({
       }];
     }
 
-    localStorage.setItem('quickbite_cart', JSON.stringify(newItems));
-    localStorage.setItem('quickbite_cart_restaurant', restaurantId);
-    localStorage.setItem('quickbite_cart_restaurant_name', restaurantName);
+    localStorage.setItem(getCartKey(), JSON.stringify(newItems));
+    localStorage.setItem(getRestaurantKey(), restaurantId);
+    localStorage.setItem(getRestaurantNameKey(), restaurantName);
     set({ items: newItems, restaurantId, restaurantName, deliveryFee: item.delivery_fee || 29 });
     return true;
   },
 
   removeItem: (menuItemId) => {
     const newItems = get().items.filter(i => i.menu_item_id !== menuItemId);
-    localStorage.setItem('quickbite_cart', JSON.stringify(newItems));
+    localStorage.setItem(getCartKey(), JSON.stringify(newItems));
     if (newItems.length === 0) {
-      localStorage.removeItem('quickbite_cart_restaurant');
-      localStorage.removeItem('quickbite_cart_restaurant_name');
+      localStorage.removeItem(getRestaurantKey());
+      localStorage.removeItem(getRestaurantNameKey());
       set({ items: newItems, restaurantId: null, restaurantName: '' });
     } else {
       set({ items: newItems });
@@ -62,16 +78,24 @@ const useCartStore = create((set, get) => ({
     const newItems = get().items.map(i =>
       i.menu_item_id === menuItemId ? { ...i, quantity } : i
     );
-    localStorage.setItem('quickbite_cart', JSON.stringify(newItems));
+    localStorage.setItem(getCartKey(), JSON.stringify(newItems));
     set({ items: newItems });
   },
 
   clearCart: () => {
-    localStorage.removeItem('quickbite_cart');
-    localStorage.removeItem('quickbite_cart_restaurant');
-    localStorage.removeItem('quickbite_cart_restaurant_name');
+    localStorage.removeItem(getCartKey());
+    localStorage.removeItem(getRestaurantKey());
+    localStorage.removeItem(getRestaurantNameKey());
     set({ items: [], restaurantId: null, restaurantName: '' });
   },
+
+  // Called after login to load the correct user's cart into memory
+  refreshCart: () => set(() => {
+    const items = JSON.parse(localStorage.getItem(getCartKey()) || '[]');
+    const restaurantId = localStorage.getItem(getRestaurantKey()) || null;
+    const restaurantName = localStorage.getItem(getRestaurantNameKey()) || '';
+    return { items, restaurantId, restaurantName };
+  }),
 
   getSubtotal: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
   getTotal: () => get().getSubtotal() + get().deliveryFee,

@@ -2,8 +2,27 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../db.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { assignDriverToOrder } from './delivery.js';
 
 const router = express.Router();
+
+const getCompleteOrder = async (orderId) => {
+  const [orderRows] = await db.execute(
+    `SELECT o.*, o.grand_total as total_amount, u.name as customer_name, u.phone as customer_phone, 
+            r.name as restaurant_name, r.lat as restaurant_lat, r.lon as restaurant_lon
+     FROM orders o 
+     JOIN users u ON o.user_id=u.id 
+     JOIN restaurants r ON o.restaurant_id=r.id 
+     WHERE o.id=?`,
+    [orderId]
+  );
+  const order = orderRows[0];
+  if (order) {
+    const [items] = await db.execute('SELECT * FROM order_items WHERE order_id=?', [orderId]);
+    order.items = items;
+  }
+  return order;
+};
 
 // Place order
 router.post('/', authenticateToken, async (req, res) => {
@@ -18,7 +37,8 @@ router.post('/', authenticateToken, async (req, res) => {
       delivery_lon, 
       payment_method, 
       special_instructions,
-      promo_code
+      promo_code,
+      use_wallet
     } = req.body;
 
     if (!restaurant_id || !items || items.length === 0) {
@@ -176,13 +196,7 @@ router.post('/', authenticateToken, async (req, res) => {
       await connection.execute('UPDATE promo_codes SET used_count = used_count + 1 WHERE id = ?', [promo_code_id]);
     }
 
-    // Auto-assign driver
-    const [availDrivers] = await connection.execute("SELECT da.*, u.name as driver_name FROM delivery_agents da JOIN users u ON da.user_id=u.id WHERE da.status='available' LIMIT 1");
-    const avDriver = availDrivers[0];
-    if (avDriver) {
-      await connection.execute('UPDATE orders SET driver_id=? WHERE id=?', [avDriver.user_id, orderId]);
-      await connection.execute("UPDATE delivery_agents SET status='busy' WHERE user_id=?", [avDriver.user_id]);
-    }
+    // Auto-assignment is removed here. It will be triggered when the restaurant marks the order as ready.
 
     await connection.commit();
     connection.release();
@@ -299,18 +313,96 @@ router.get('/:id', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Failed to fetch order' }); }
 });
 
-// Update order status
+// Restaurant Accepts Order
+router.put('/:id/accept', authenticateToken, async (req, res) => {
+  try {
+    const { estimated_prep_time } = req.body;
+    const prepTime = parseInt(estimated_prep_time) || 20;
+    
+    // Generate OTPs
+    const pickup_otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
+    const delivery_otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
+
+    await db.execute(
+      "UPDATE orders SET status='accepted', estimated_prep_time=?, pickup_otp=?, delivery_otp=?, accepted_at=NOW(), updated_at=NOW() WHERE id=?", 
+      [prepTime, pickup_otp, delivery_otp, req.params.id]
+    );
+    
+    const order = await getCompleteOrder(req.params.id);
+    
+    const io = req.app.get('io');
+    if (io) { 
+      io.to(`order-${req.params.id}`).emit('order-status-update', { orderId: req.params.id, status: 'accepted' }); 
+      io.to(`order-${req.params.id}`).emit('order-accepted', { orderId: req.params.id, estimated_prep_time: prepTime });
+      io.emit('order-updated', order); 
+    }
+    res.json(order);
+  } catch (err) { 
+    console.error(err);
+    res.status(500).json({ error: 'Failed to accept order' }); 
+  }
+});
+
+// Restaurant Rejects Order
+router.put('/:id/reject', authenticateToken, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    await db.execute(
+      "UPDATE orders SET status='cancelled', cancel_reason=?, cancelled_at=NOW(), updated_at=NOW() WHERE id=?", 
+      [reason || 'Rejected by restaurant', req.params.id]
+    );
+    
+    // Process refund logic would go here
+    
+    const order = await getCompleteOrder(req.params.id);
+    
+    const io = req.app.get('io');
+    if (io) { 
+      io.to(`order-${req.params.id}`).emit('order-status-update', { orderId: req.params.id, status: 'cancelled', reason: order.cancel_reason }); 
+      io.emit('order-updated', order); 
+    }
+    res.json(order);
+  } catch (err) { 
+    console.error(err);
+    res.status(500).json({ error: 'Failed to reject order' }); 
+  }
+});
+
+// Restaurant Marks Order as Ready (Triggers Driver Assignment)
+router.put('/:id/ready', authenticateToken, async (req, res) => {
+  try {
+    await db.execute(
+      "UPDATE orders SET status='ready_for_pickup', ready_at=NOW(), updated_at=NOW() WHERE id=?", 
+      [req.params.id]
+    );
+    
+    const order = await getCompleteOrder(req.params.id);
+    
+    const io = req.app.get('io');
+    if (io) { 
+      io.to(`order-${req.params.id}`).emit('order-status-update', { orderId: req.params.id, status: 'ready_for_pickup' }); 
+      io.to(`order-${req.params.id}`).emit('order-ready', { orderId: req.params.id });
+      io.emit('order-updated', order); 
+      
+      // Find and assign driver asynchronously
+      assignDriverToOrder(req.params.id, order.restaurant_lat, order.restaurant_lon, io);
+    }
+    res.json(order);
+  } catch (err) { 
+    console.error(err);
+    res.status(500).json({ error: 'Failed to mark ready' }); 
+  }
+});
+
+// Update order status (Generic fallback)
 router.put('/:id/status', authenticateToken, async (req, res) => {
   try {
     const { status } = req.body;
-    const valid = ['pending','confirmed','accepted','preparing','ready','out_for_delivery','delivered','cancelled'];
-    // Map frontend-friendly names to DB enum values
-    let dbStatus = status;
-    if (status === 'accepted') dbStatus = 'confirmed';
-    if (status === 'ready') dbStatus = 'out_for_delivery';
+    const valid = ['pending','accepted','preparing','ready_for_pickup','driver_assigned','out_for_delivery','delivered','cancelled'];
+    
     if (!valid.includes(status)) return res.status(400).json({ error: 'Invalid status' });
     
-    await db.execute("UPDATE orders SET status=?, updated_at=NOW() WHERE id=?", [dbStatus, req.params.id]);
+    await db.execute("UPDATE orders SET status=?, updated_at=NOW() WHERE id=?", [status, req.params.id]);
     
     if (status === 'delivered') {
       const [oRows] = await db.execute('SELECT driver_id FROM orders WHERE id=?', [req.params.id]);
@@ -319,8 +411,7 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
       }
     }
     
-    const [orderRows] = await db.execute('SELECT o.*, o.grand_total as total_amount, r.name as restaurant_name FROM orders o JOIN restaurants r ON o.restaurant_id=r.id WHERE o.id=?', [req.params.id]);
-    const order = orderRows[0];
+    const order = await getCompleteOrder(req.params.id);
     const io = req.app.get('io');
     if (io) { io.to(`order-${req.params.id}`).emit('order-status-update', {orderId: req.params.id, status}); io.emit('order-updated', order); }
     res.json(order);

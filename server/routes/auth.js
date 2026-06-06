@@ -121,7 +121,14 @@ router.put('/profile', authenticateToken, async (req, res) => {
       `UPDATE users SET name = COALESCE(?, name), phone = COALESCE(?, phone),
        address = COALESCE(?, address), lat = COALESCE(?, lat), lon = COALESCE(?, lon),
        updated_at = NOW() WHERE id = ?`,
-      [name, phone, address, lat, lon, req.user.id]
+      [
+        name !== undefined ? name : null, 
+        phone !== undefined ? phone : null, 
+        address !== undefined ? address : null, 
+        lat !== undefined ? lat : null, 
+        lon !== undefined ? lon : null, 
+        req.user.id
+      ]
     );
 
     const [users] = await db.execute('SELECT id, name, email, role, phone, avatar_url, address, lat, lon FROM users WHERE id = ?', [req.user.id]);

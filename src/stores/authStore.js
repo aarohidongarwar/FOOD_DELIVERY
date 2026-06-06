@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '../api';
+import useLocationStore from './locationStore';
 
 const useAuthStore = create((set, get) => ({
   user: JSON.parse(localStorage.getItem('quickbite_user') || 'null'),
@@ -20,6 +21,10 @@ const useAuthStore = create((set, get) => ({
       localStorage.setItem('quickbite_token', data.token);
       localStorage.setItem('quickbite_user', JSON.stringify(data.user));
       set({ user: data.user, token: data.token, loading: false });
+      
+      // Refresh user-scoped data (cart + saved addresses) for the newly logged in user
+      useLocationStore.getState().refreshSavedAddresses();
+      import('./cartStore').then(mod => mod.default.getState().refreshCart());
       return data.user;
     } catch (err) {
       const msg = err.response?.data?.error || 'Login failed';
@@ -35,6 +40,10 @@ const useAuthStore = create((set, get) => ({
       localStorage.setItem('quickbite_token', data.token);
       localStorage.setItem('quickbite_user', JSON.stringify(data.user));
       set({ user: data.user, token: data.token, loading: false });
+      
+      // Refresh user-scoped data (cart + saved addresses) for the newly registered user
+      useLocationStore.getState().refreshSavedAddresses();
+      import('./cartStore').then(mod => mod.default.getState().refreshCart());
       return data.user;
     } catch (err) {
       const msg = err.response?.data?.error || 'Registration failed';
@@ -43,10 +52,33 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Full logout: clears auth session + active location, redirects to landing
+  // NOTE: Cart and saved addresses are user-scoped and intentionally NOT cleared
   logout: () => {
     localStorage.removeItem('quickbite_token');
     localStorage.removeItem('quickbite_user');
+    localStorage.removeItem('quickbite_user_location');
+    
     set({ user: null, token: null });
+    
+    // Force reload to completely reset all stores
+    window.location.href = '/';
+  },
+
+  // Silent logout: clears auth session without redirect (used by LandingPage auto-logout)
+  // Cart and saved addresses are user-scoped and intentionally NOT cleared
+  silentLogout: () => {
+    localStorage.removeItem('quickbite_token');
+    localStorage.removeItem('quickbite_user');
+    localStorage.removeItem('quickbite_user_location');
+    
+    set({ user: null, token: null });
+
+    // Reset in-memory states for current session
+    useLocationStore.getState().clearLocation();
+    import('./cartStore').then(mod => {
+      mod.default.setState({ items: [], restaurantId: null, restaurantName: '' });
+    });
   },
 
   fetchMe: async () => {

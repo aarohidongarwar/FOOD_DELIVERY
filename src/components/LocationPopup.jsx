@@ -66,13 +66,7 @@ export default function LocationPopup() {
   
   const searchTimeout = useRef(null);
 
-  // Auto-show logic if no location set on initial load
-  useEffect(() => {
-    if (!userLocation) {
-      const timer = setTimeout(() => setShowLocationPopup(true), 600);
-      return () => clearTimeout(timer);
-    }
-  }, [userLocation, setShowLocationPopup]);
+  // Auto-show logic is now handled globally in App.jsx to avoid showing on the Landing Page.
 
   // Reset state when popup opens
   useEffect(() => {
@@ -236,7 +230,13 @@ export default function LocationPopup() {
 
   return (
     <AnimatePresence>
-      <motion.div className="loc-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closePopup} />
+      <motion.div 
+        className="loc-backdrop" 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }} 
+        onClick={userLocation ? closePopup : undefined} 
+      />
 
       <motion.div 
         className="loc-drawer"
@@ -246,7 +246,9 @@ export default function LocationPopup() {
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
       >
         <div className="loc-drawer-handle" />
-        <button className="loc-close-btn" onClick={closePopup}><X size={24} /></button>
+        {userLocation && (
+          <button className="loc-close-btn" onClick={closePopup}><X size={24} /></button>
+        )}
 
         {/* STEP 1: Address Book / List View */}
         {step === 'list' && (

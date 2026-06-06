@@ -42,7 +42,7 @@ async function runTests() {
     // 1. Test Login (Customer)
     console.log('Testing: POST /api/auth/login');
     // Using a sample user, this might fail if db is empty, but let's check
-    const loginRes = await makeRequest('/api/auth/login', 'POST', { email: 'admin@quickbite.com', password: 'admin' });
+    const loginRes = await makeRequest('/api/auth/login', 'POST', { email: 'admin@quickbite.com', password: 'password123' });
     console.log(`Status: ${loginRes.status}`);
     
     let token = '';

@@ -94,11 +94,138 @@
   background: #1A1A1A !important;
   color: white !important;
   transition: all 0.3s ease !important;
+  cursor: pointer;
+  display: inline-flex !important;
+  align-items: center !important;
 }
 
 .lp-cta-secondary:hover {
   transform: translateY(-3px);
   box-shadow: 0 10px 20px rgba(0,0,0,0.2) !important;
+}
+
+.lp-cta-secondary--active {
+  background: #FF9F0D !important;
+  box-shadow: 0 10px 25px rgba(255, 159, 13, 0.4) !important;
+  transform: translateY(-3px);
+}
+
+/* ══════════════════════════════════════════════
+   Partner Panel (Inline Options)
+   ══════════════════════════════════════════════ */
+.lp-partner-panel {
+  overflow: hidden;
+  width: 100%;
+  max-width: 680px;
+}
+
+.lp-partner-panel-inner {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 24px;
+  padding: 28px;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+}
+
+.lp-partner-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.lp-partner-panel-header h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1A1A1A;
+  margin: 0;
+}
+
+.lp-partner-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lp-partner-close:hover {
+  background: rgba(0, 0, 0, 0.12);
+  color: #1A1A1A;
+  transform: rotate(90deg);
+}
+
+.lp-partner-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.lp-partner-card {
+  background: white;
+  border: 1px solid #F0F0F0;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: default;
+  transition: border-color 0.3s ease;
+}
+
+.lp-partner-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lp-partner-card-text h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1A1A1A;
+  margin: 0 0 4px;
+}
+
+.lp-partner-card-text p {
+  font-size: 0.8rem;
+  color: #888;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.lp-partner-card-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  color: white !important;
+  font-weight: 600;
+  font-size: 0.813rem;
+  text-decoration: none;
+  transition: all 0.25s ease;
+  margin-top: auto;
+}
+
+.lp-partner-card-btn:hover {
+  filter: brightness(1.1);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .lp-hero-image-container {
@@ -572,6 +699,9 @@
   
   .lp-roles-grid { grid-template-columns: 1fr; max-width: 500px; margin: 0 auto; }
   
+  .lp-partner-panel { max-width: 100%; }
+  .lp-partner-grid { grid-template-columns: repeat(2, 1fr); }
+  
   .lp-cta-box { padding: 60px 30px; }
   .lp-cta-box h2 { font-size: 2.5rem; }
 }
@@ -580,4 +710,12 @@
   .lp-title { font-size: 3rem; }
   .lp-hero-actions { flex-direction: column; }
   .lp-cta, .lp-cta-secondary { width: 100%; justify-content: center !important; }
+  
+  .lp-partner-grid { grid-template-columns: 1fr; }
+  .lp-partner-panel-inner { padding: 20px; }
+  .lp-partner-card { flex-direction: row; align-items: center; padding: 16px; gap: 14px; }
+  .lp-partner-card-icon { width: 42px; height: 42px; }
+  .lp-partner-card-text h4 { font-size: 0.875rem; }
+  .lp-partner-card-text p { font-size: 0.75rem; }
+  .lp-partner-card-btn { padding: 6px 14px; font-size: 0.75rem; }
 }

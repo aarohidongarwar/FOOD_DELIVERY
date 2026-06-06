@@ -59,6 +59,7 @@ CREATE TABLE restaurants (
     delivery_fee DECIMAL(10,2) DEFAULT 29.00,
     min_order DECIMAL(10,2) DEFAULT 99.00,
     is_grocery BOOLEAN DEFAULT FALSE,
+    is_profile_complete BOOLEAN DEFAULT FALSE,
     registration_details TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
@@ -123,7 +124,7 @@ CREATE TABLE orders (
     user_id VARCHAR(36) NOT NULL,
     restaurant_id VARCHAR(36) NOT NULL,
     driver_id VARCHAR(36),
-    status ENUM('pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled') DEFAULT 'pending',
+    status ENUM('pending', 'accepted', 'confirmed', 'preparing', 'ready_for_pickup', 'driver_assigned', 'out_for_delivery', 'delivered', 'cancelled') DEFAULT 'pending',
     item_total DECIMAL(10,2) NOT NULL,
     delivery_fee DECIMAL(10,2) DEFAULT 29.00,
     tax_amount DECIMAL(10,2) DEFAULT 0.00,
@@ -134,6 +135,15 @@ CREATE TABLE orders (
     delivery_lat DECIMAL(10,8),
     delivery_lon DECIMAL(11,8),
     special_instructions TEXT,
+    estimated_prep_time INT DEFAULT NULL,
+    pickup_otp VARCHAR(6) DEFAULT NULL,
+    delivery_otp VARCHAR(6) DEFAULT NULL,
+    accepted_at TIMESTAMP NULL DEFAULT NULL,
+    ready_at TIMESTAMP NULL DEFAULT NULL,
+    picked_up_at TIMESTAMP NULL DEFAULT NULL,
+    delivered_at TIMESTAMP NULL DEFAULT NULL,
+    cancelled_at TIMESTAMP NULL DEFAULT NULL,
+    cancel_reason TEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -166,7 +176,20 @@ CREATE TABLE order_item_addons (
     FOREIGN KEY (addon_id) REFERENCES menu_item_addons(id) ON DELETE SET NULL
 );
 
--- 10. delivery_tracking
+-- 10. delivery_assignments
+CREATE TABLE delivery_assignments (
+    id VARCHAR(36) PRIMARY KEY,
+    order_id VARCHAR(36) NOT NULL,
+    driver_id VARCHAR(36) NOT NULL,
+    status ENUM('pending', 'accepted', 'declined', 'timeout') DEFAULT 'pending',
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    responded_at TIMESTAMP NULL DEFAULT NULL,
+    decline_reason TEXT,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 11. delivery_tracking
 CREATE TABLE delivery_tracking (
     id VARCHAR(36) PRIMARY KEY,
     driver_id VARCHAR(36) NOT NULL,

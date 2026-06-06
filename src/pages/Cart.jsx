@@ -5,27 +5,29 @@ import { MapPin, CreditCard, ShoppingBag, Info, ChevronRight, CheckCircle } from
 import useCartStore from '../stores/cartStore';
 import useAuthStore from '../stores/authStore';
 import useOrderStore from '../stores/orderStore';
+import useLocationStore from '../stores/locationStore';
 import api from '../api';
 import './Cart.css';
 
 export default function Cart() {
   const { items, restaurantId, restaurantName, deliveryFee, getSubtotal, getTotal, clearCart } = useCartStore();
-  const { user, isAuthenticated, wallet, fetchWallet } = useAuthStore();
+  const { user, isAuthenticated, wallet, fetchWallet, updateProfile, fetchMe } = useAuthStore();
   const { placeOrder } = useOrderStore();
   const navigate = useNavigate();
+  const { userLocation } = useLocationStore();
 
-  if (items.length === 0) {
-    return (
-      <div className="cart-page empty-cart-page container">
-        <ShoppingBag size={80} className="text-muted" />
-        <h2>Your cart is empty</h2>
-        <p>You can go to home page to view more restaurants</p>
-        <Link to="/restaurants" className="btn btn-primary mt-4">See restaurants near you</Link>
-      </div>
-    );
-  }
+  const getFormattedAddress = () => {
+    if (!userLocation) return '';
+    const parts = [];
+    if (userLocation.flatNo) parts.push(userLocation.flatNo);
+    if (userLocation.fullAddress) parts.push(userLocation.fullAddress);
+    else if (userLocation.city) parts.push(userLocation.city);
+    if (userLocation.landmark) parts.push(`Landmark: ${userLocation.landmark}`);
+    return parts.join(', ');
+  };
 
-  const [address, setAddress] = useState(user?.address || '');
+  const [address, setAddress] = useState(getFormattedAddress() || user?.address || '');
+  const [saveToProfile, setSaveToProfile] = useState(!user?.address);
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [instructions, setInstructions] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,14 +42,53 @@ export default function Cart() {
   const [promoSuccess, setPromoSuccess] = useState('');
   const [useWallet, setUseWallet] = useState(false);
 
+  // Update address if user selects a new location from the top pin while on Cart page
+  useEffect(() => {
+    const formatted = getFormattedAddress();
+    if (formatted) {
+      setAddress(formatted);
+    } else if (user?.address) {
+      setAddress(user.address);
+    }
+  }, [userLocation, user?.address]);
+
   useEffect(() => {
     if (isAuthenticated()) {
+      fetchMe();
       fetchWallet();
       api.get('/orders/promo-codes/active')
         .then(({ data }) => setActivePromos(data))
         .catch(err => console.error(err));
     }
-  }, [isAuthenticated, fetchWallet]);
+  }, [isAuthenticated, fetchWallet, fetchMe]);
+
+  useEffect(() => {
+    if (user) {
+      const formatted = getFormattedAddress();
+      if (formatted) {
+        // Live location selected via LocationPopup takes priority
+        setAddress(formatted);
+        setSaveToProfile(true);
+      } else if (user.address) {
+        setAddress(user.address);
+        setSaveToProfile(false);
+      } else {
+        setSaveToProfile(true);
+      }
+    }
+  }, [user]);
+
+  // Early return for empty cart — AFTER all hooks
+  if (items.length === 0 && !showSuccess) {
+    return (
+      <div className="cart-page empty-cart-page container">
+        <ShoppingBag size={80} className="text-muted" />
+        <h2>Your cart is empty</h2>
+        <p>You can go to home page to view more restaurants</p>
+        <Link to="/restaurants" className="btn btn-primary mt-4">See restaurants near you</Link>
+      </div>
+    );
+  }
 
   const handleApplyPromo = async (codeToApply) => {
     const code = codeToApply || promoCodeInput;
@@ -93,7 +134,7 @@ export default function Cart() {
       return;
     }
 
-    if (!address.trim()) {
+    if (!address || !address.trim()) {
       setError('Delivery address is required');
       return;
     }
@@ -102,10 +143,14 @@ export default function Cart() {
     setError('');
 
     try {
+      if (saveToProfile && address.trim() !== user?.address) {
+        await updateProfile({ address: address.trim() });
+      }
+
       const orderData = {
         restaurant_id: restaurantId,
         items: items.map(i => ({ menu_item_id: i.menu_item_id, quantity: i.quantity, special_instructions: instructions })),
-        delivery_address: address,
+        delivery_address: address.trim(),
         payment_method: toPay === 0 ? 'wallet' : paymentMethod,
         use_wallet: useWallet,
         promo_code: appliedPromo?.code || null
@@ -147,6 +192,16 @@ export default function Cart() {
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                 />
+                {user && (
+                  <label className="cp-address-checkbox-label" style={{ marginTop: '12px', display: 'flex' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={saveToProfile} 
+                      onChange={(e) => setSaveToProfile(e.target.checked)} 
+                    />
+                    <span>Update profile address with this address</span>
+                  </label>
+                )}
               </div>
             ) : (
               <div className="cp-auth-prompt">

@@ -1180,3 +1180,92 @@
   color: #6B7280;
   font-style: italic;
 }
+
+/* Navigation Modal Styles */
+.nav-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  padding: 20px;
+}
+
+.nav-modal-content {
+  background-color: #ffffff;
+  width: 100%;
+  max-width: 800px;
+  height: 80vh;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.nav-modal-header {
+  padding: 20px 24px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.nav-modal-header h2 {
+  margin: 0 0 4px 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.nav-modal-header p {
+  margin: 0;
+  color: #6B7280;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-map-container {
+  flex: 1;
+  width: 100%;
+  position: relative;
+  background-color: #f3f4f6;
+}
+
+.nav-leaflet-map {
+  height: 100%;
+  width: 100%;
+}
+
+.nav-map-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.1rem;
+  color: #6B7280;
+  font-weight: 600;
+}
+
+.nav-modal-footer {
+  padding: 20px 24px;
+  background-color: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 16px;
+}
+
+.nav-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+
+

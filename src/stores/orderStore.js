@@ -31,13 +31,15 @@ const useOrderStore = create((set, get) => ({
   },
 
   fetchOrder: async (id) => {
-    set({ loading: true, currentOrder: null });
+    set({ loading: true, error: null });
     try {
       const { data } = await api.get(`/orders/${id}`);
       set({ currentOrder: data, loading: false });
       return data;
-    } catch {
-      set({ loading: false });
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'Failed to fetch order';
+      console.error('fetchOrder error:', msg);
+      set({ loading: false, error: msg });
     }
   },
 

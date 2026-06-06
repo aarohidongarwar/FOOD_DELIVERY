@@ -220,7 +220,7 @@ export default function AdminOrders() {
                 {selectedOrder.items?.map((item, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-light)' }}>
                     <span style={{ fontSize: '0.875rem' }}>{item.quantity}x {item.name}</span>
-                    <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>₹{item.price * item.quantity}</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>₹{item.total_price || (item.base_price * item.quantity) || (item.price * item.quantity)}</span>
                   </div>
                 ))}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
