@@ -130,6 +130,17 @@ const RestaurantDashboard = () => {
       });
     });
 
+    s.on('order-updated', (updatedRawOrder) => {
+      const updatedOrder = transformOrder(updatedRawOrder);
+      setOrdersData(prev => {
+        if (prev.some(o => o.id === updatedOrder.id)) {
+          return prev.map(o => o.id === updatedOrder.id ? updatedOrder : o);
+        }
+        return prev;
+      });
+      setSelectedOrder(prev => (prev && prev.id === updatedOrder.id) ? updatedOrder : prev);
+    });
+
     return () => s.disconnect();
   }, [user]);
 
@@ -164,13 +175,13 @@ const RestaurantDashboard = () => {
   // Status mapping: DB values → UI-friendly values
   const dbToUiStatus = (status) => {
     if (status === 'confirmed') return 'accepted';
-    if (status === 'out_for_delivery') return 'ready';
+    if (status === 'ready_for_pickup' || status === 'driver_assigned' || status === 'out_for_delivery') return 'ready';
     return status;
   };
   
   const uiToDbStatus = (status) => {
     if (status === 'accepted') return 'confirmed';
-    if (status === 'ready') return 'out_for_delivery';
+    if (status === 'ready') return 'ready_for_pickup';
     return status;
   };
 
@@ -374,12 +385,21 @@ const RestaurantDashboard = () => {
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
-      await api.put(`/orders/${orderId}/status`, { status: newStatus });
-      // Map the UI status for local state update
-      const uiStatus = dbToUiStatus(newStatus === 'accepted' ? 'confirmed' : newStatus === 'ready' ? 'out_for_delivery' : newStatus);
-      setOrdersData(ordersData.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+      let response;
+      if (newStatus === 'accepted') {
+        response = await api.put(`/orders/${orderId}/accept`, { estimated_prep_time: 25 });
+      } else if (newStatus === 'cancelled') {
+        response = await api.put(`/orders/${orderId}/reject`, { reason: 'Rejected by restaurant' });
+      } else if (newStatus === 'ready') {
+        response = await api.put(`/orders/${orderId}/ready`);
+      } else {
+        response = await api.put(`/orders/${orderId}/status`, { status: newStatus });
+      }
+      
+      const updatedOrder = transformOrder(response.data);
+      setOrdersData(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
       if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder({ ...selectedOrder, status: newStatus });
+        setSelectedOrder(updatedOrder);
       }
     } catch(err) {
       console.error(err);
@@ -866,7 +886,7 @@ const RestaurantDashboard = () => {
                       <span className={`r-order-badge ${order.status}`}>{order.status}</span>
                     </div>
                     <p className="f-o-customer">{order.customer} - {order.address}</p>
-                    <p className="f-o-meta">{order.items} items &nbsp;&nbsp; <strong>₹{order.price}</strong> &nbsp;&nbsp; <span style={{color: 'var(--ph-text-muted)'}}>{order.time}</span></p>
+                    <p className="f-o-meta">{order.itemCount} items &nbsp;&nbsp; <strong>₹{order.price}</strong> &nbsp;&nbsp; <span style={{color: 'var(--ph-text-muted)'}}>{order.time}</span></p>
                   </div>
                   <div className="f-o-actions" style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
                     {order.status === 'ready' && (
@@ -1444,7 +1464,21 @@ const RestaurantDashboard = () => {
                   <p style={{margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--ph-text-muted)'}}>{selectedOrder.time || 'Just now'}</p>
                 </div>
               </div>
-              
+
+              {selectedOrder.pickup_otp && (selectedOrder.status === 'ready' || selectedOrder.status === 'driver_assigned' || selectedOrder.status === 'ready_for_pickup') && (
+                <div style={{
+                  background: '#fff7ed', 
+                  border: '1px dashed #f97316', 
+                  padding: '12px', 
+                  borderRadius: '8px', 
+                  marginBottom: '20px', 
+                  textAlign: 'center'
+                }}>
+                  <span style={{fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px', fontWeight: '500'}}>PICKUP OTP (Give to Delivery Boy)</span>
+                  <strong style={{fontSize: '1.5rem', color: '#f97316', letterSpacing: '3px'}}>{selectedOrder.pickup_otp}</strong>
+                </div>
+              )}
+
               <h4 style={{borderBottom: '1px solid var(--ph-border)', paddingBottom: '8px', marginBottom: '16px'}}>Order Items ({selectedOrder.items?.length || 0})</h4>
               <div style={{marginBottom: '24px'}}>
                 {selectedOrder.items && selectedOrder.items.length > 0 ? (
