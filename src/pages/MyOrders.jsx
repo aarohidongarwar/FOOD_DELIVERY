@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { Package, ChevronRight, MessageSquare } from 'lucide-react';
 import { OrderStatusBadge, LoadingSpinner } from '../components';
 import useOrderStore from '../stores/orderStore';
+import useToastStore from '../stores/toastStore';
 import './MyOrders.css';
 
 export default function MyOrders() {
   const { orders, fetchMyOrders, loading } = useOrderStore();
+  const toast = useToastStore();
   const [reviewModal, setReviewModal] = useState(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -22,9 +24,9 @@ export default function MyOrders() {
     try {
       await submitReview(reviewModal.id, rating, comment);
       setReviewModal(null);
-      alert('Review submitted successfully!');
+      toast.success('Review submitted successfully!');
     } catch (err) {
-      alert('Failed to submit review');
+      toast.error('Failed to submit review');
     }
   };
 

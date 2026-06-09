@@ -3,11 +3,13 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingCart, User, LogOut, Search, MapPin, Menu, X, ChevronDown, Package, LayoutDashboard, Truck, Bell, Settings, Moon } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import useCartStore from '../stores/cartStore';
+import useNotificationStore from '../stores/notificationStore';
 import './Navbar.css';
 
 export default function Navbar({ onCartClick }) {
   const { user, logout } = useAuthStore();
   const itemCount = useCartStore(s => s.getItemCount());
+  const unreadCount = useNotificationStore(s => s.unreadCount);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -162,7 +164,7 @@ export default function Navbar({ onCartClick }) {
                       <Link to="/profile" className="dropdown-item"><User size={16} /> Profile</Link>
                       {isRestaurantDashboard ? (
                         <>
-                          <button className="dropdown-item" onClick={() => { setShowDropdown(false); }}><Bell size={16} /> Notifications <span className="dropdown-badge">1</span></button>
+                          <button className="dropdown-item" onClick={() => { setShowDropdown(false); navigate('/restaurant-dashboard'); }}><Bell size={16} /> Notifications {unreadCount > 0 && <span className="dropdown-badge">{unreadCount}</span>}</button>
                           <button className="dropdown-item" onClick={() => { setShowDropdown(false); }}><Settings size={16} /> Settings</button>
                           <button className="dropdown-item" onClick={() => { setShowDropdown(false); }}><Moon size={16} /> Dark Mode</button>
                         </>
@@ -225,7 +227,7 @@ export default function Navbar({ onCartClick }) {
               <Link to="/profile" className="mobile-link"><User size={18} /> Profile</Link>
               {isRestaurantDashboard ? (
                 <>
-                  <button className="mobile-link" onClick={() => setMobileOpen(false)}><Bell size={18} /> Notifications <span className="dropdown-badge">1</span></button>
+                  <button className="mobile-link" onClick={() => { setMobileOpen(false); navigate('/restaurant-dashboard'); }}><Bell size={18} /> Notifications {unreadCount > 0 && <span className="dropdown-badge">{unreadCount}</span>}</button>
                   <button className="mobile-link" onClick={() => setMobileOpen(false)}><Settings size={18} /> Settings</button>
                   <button className="mobile-link" onClick={() => setMobileOpen(false)}><Moon size={18} /> Dark Mode</button>
                 </>

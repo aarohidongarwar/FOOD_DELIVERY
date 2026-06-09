@@ -2,7 +2,9 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../db.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { validateOrderPlacement } from '../middleware/validate.js';
 import { assignDriverToOrder } from './delivery.js';
+import { createNotification } from './notifications.js';
 
 const router = express.Router();
 
@@ -24,8 +26,20 @@ const getCompleteOrder = async (orderId) => {
   return order;
 };
 
+const checkRestaurantOwnership = async (orderId, userId) => {
+  const [orderCheck] = await db.execute('SELECT restaurant_id FROM orders WHERE id=?', [orderId]);
+  if (!orderCheck[0]) return false;
+  const [restOwner] = await db.execute('SELECT owner_id FROM restaurants WHERE id = ?', [orderCheck[0].restaurant_id]);
+  return restOwner[0] && restOwner[0].owner_id === userId;
+};
+
+const checkDirectRestaurantOwnership = async (restaurantId, userId) => {
+  const [restOwner] = await db.execute('SELECT owner_id FROM restaurants WHERE id = ?', [restaurantId]);
+  return restOwner[0] && restOwner[0].owner_id === userId;
+};
+
 // Place order
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, validateOrderPlacement, async (req, res) => {
   const connection = await db.pool.getConnection();
   await connection.beginTransaction();
   try {
@@ -125,6 +139,8 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     const grand_total = Math.max(0, subtotal + delivery_fee + tax_amount - discount_amount);
+    const commission_amount = Math.round((subtotal * 0.10) * 100) / 100; // 10% commission on subtotal
+    const restaurant_earnings = Math.round((subtotal + tax_amount - discount_amount - commission_amount) * 100) / 100;
     const orderId = uuidv4();
 
     // Handle wallet payment / split payment deduction
@@ -157,13 +173,19 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
 
+    // Determine payment details
+    const isOnline = ['card', 'upi', 'online'].includes(payment_method?.toLowerCase());
+    const actual_payment_method = isOnline ? 'ONLINE' : 'COD';
+    const initial_payment_status = (isOnline || wallet_deducted >= grand_total) ? 'paid' : 'pending';
+
     // Insert Order
     await connection.execute(
-      `INSERT INTO orders (id, user_id, restaurant_id, status, item_total, delivery_fee, tax_amount, discount_amount, grand_total, promo_code_id, delivery_address, delivery_lat, delivery_lon, special_instructions)
-       VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO orders (id, user_id, restaurant_id, status, item_total, delivery_fee, tax_amount, discount_amount, grand_total, promo_code_id, delivery_address, delivery_lat, delivery_lon, special_instructions, payment_method, payment_status, commission_amount, restaurant_earnings)
+       VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         orderId, req.user.id, restaurant_id, subtotal, delivery_fee, tax_amount, discount_amount, grand_total,
-        promo_code_id, delivery_address || '', delivery_lat || null, delivery_lon || null, special_instructions || null
+        promo_code_id, delivery_address || '', delivery_lat || null, delivery_lon || null, special_instructions || null,
+        actual_payment_method, initial_payment_status, commission_amount, restaurant_earnings
       ]
     );
 
@@ -298,6 +320,11 @@ router.get('/:id', authenticateToken, async (req, res) => {
     const order = orderRows[0];
     if (!order) return res.status(404).json({ error: 'Order not found' });
     
+    if (order.user_id !== req.user.id && order.driver_id !== req.user.id && req.user.role !== 'admin') {
+      const isOwner = await checkDirectRestaurantOwnership(order.restaurant_id, req.user.id);
+      if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+    }
+
     const [items] = await db.execute('SELECT * FROM order_items WHERE order_id=?', [order.id]);
     order.items = items;
     
@@ -314,8 +341,11 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Restaurant Accepts Order
-router.put('/:id/accept', authenticateToken, async (req, res) => {
+router.put('/:id/accept', authenticateToken, requireRole('restaurant'), async (req, res) => {
   try {
+    const isOwner = await checkRestaurantOwnership(req.params.id, req.user.id);
+    if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+
     const { estimated_prep_time } = req.body;
     const prepTime = parseInt(estimated_prep_time) || 20;
     
@@ -336,6 +366,7 @@ router.put('/:id/accept', authenticateToken, async (req, res) => {
       io.to(`order-${req.params.id}`).emit('order-accepted', { orderId: req.params.id, estimated_prep_time: prepTime });
       io.emit('order-updated', order); 
     }
+    await createNotification(order.user_id, 'Order Accepted', `Your order from ${order.restaurant_name} has been accepted and is being prepared.`, 'success', io);
     res.json(order);
   } catch (err) { 
     console.error(err);
@@ -344,8 +375,11 @@ router.put('/:id/accept', authenticateToken, async (req, res) => {
 });
 
 // Restaurant Rejects Order
-router.put('/:id/reject', authenticateToken, async (req, res) => {
+router.put('/:id/reject', authenticateToken, requireRole('restaurant'), async (req, res) => {
   try {
+    const isOwner = await checkRestaurantOwnership(req.params.id, req.user.id);
+    if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+
     const { reason } = req.body;
     await db.execute(
       "UPDATE orders SET status='cancelled', cancel_reason=?, cancelled_at=NOW(), updated_at=NOW() WHERE id=?", 
@@ -361,6 +395,7 @@ router.put('/:id/reject', authenticateToken, async (req, res) => {
       io.to(`order-${req.params.id}`).emit('order-status-update', { orderId: req.params.id, status: 'cancelled', reason: order.cancel_reason }); 
       io.emit('order-updated', order); 
     }
+    await createNotification(order.user_id, 'Order Cancelled', `Your order from ${order.restaurant_name} was cancelled. Reason: ${order.cancel_reason || 'Rejected'}`, 'error', io);
     res.json(order);
   } catch (err) { 
     console.error(err);
@@ -369,8 +404,10 @@ router.put('/:id/reject', authenticateToken, async (req, res) => {
 });
 
 // Restaurant Marks Order as Ready (Triggers Driver Assignment)
-router.put('/:id/ready', authenticateToken, async (req, res) => {
+router.put('/:id/ready', authenticateToken, requireRole('restaurant'), async (req, res) => {
   try {
+    const isOwner = await checkRestaurantOwnership(req.params.id, req.user.id);
+    if (!isOwner) return res.status(403).json({ error: 'Access denied' });
     await db.execute(
       "UPDATE orders SET status='ready_for_pickup', ready_at=NOW(), updated_at=NOW() WHERE id=?", 
       [req.params.id]
@@ -384,6 +421,8 @@ router.put('/:id/ready', authenticateToken, async (req, res) => {
       io.to(`order-${req.params.id}`).emit('order-ready', { orderId: req.params.id });
       io.emit('order-updated', order); 
       
+      await createNotification(order.user_id, 'Order Ready', `Your order from ${order.restaurant_name} is ready for pickup!`, 'info', io);
+
       // Find and assign driver asynchronously
       assignDriverToOrder(req.params.id, order.restaurant_lat, order.restaurant_lon, io);
     }
@@ -395,12 +434,30 @@ router.put('/:id/ready', authenticateToken, async (req, res) => {
 });
 
 // Update order status (Generic fallback)
-router.put('/:id/status', authenticateToken, async (req, res) => {
+router.put('/:id/status', authenticateToken, requireRole('restaurant', 'admin'), async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      const isOwner = await checkRestaurantOwnership(req.params.id, req.user.id);
+      if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+    }
     const { status } = req.body;
-    const valid = ['pending','accepted','preparing','ready_for_pickup','driver_assigned','out_for_delivery','delivered','cancelled'];
+    const validTransitions = {
+      pending: ['accepted', 'cancelled'],
+      accepted: ['preparing', 'ready_for_pickup', 'cancelled'],
+      preparing: ['ready_for_pickup', 'cancelled'],
+      ready_for_pickup: ['driver_assigned', 'cancelled'],
+      driver_assigned: ['out_for_delivery', 'cancelled'],
+      out_for_delivery: ['delivered', 'cancelled'],
+      delivered: [],
+      cancelled: []
+    };
     
-    if (!valid.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+    const [current] = await db.execute('SELECT status FROM orders WHERE id = ?', [req.params.id]);
+    if (!current[0]) return res.status(404).json({ error: 'Order not found' });
+    
+    if (!validTransitions[current[0].status]?.includes(status)) {
+      return res.status(400).json({ error: `Cannot transition from ${current[0].status} to ${status}` });
+    }
     
     await db.execute("UPDATE orders SET status=?, updated_at=NOW() WHERE id=?", [status, req.params.id]);
     
@@ -419,8 +476,12 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
 });
 
 // Get restaurant orders
-router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
+router.get('/restaurant/:restaurantId', authenticateToken, requireRole('restaurant', 'admin'), async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      const isOwner = await checkDirectRestaurantOwnership(req.params.restaurantId, req.user.id);
+      if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+    }
     const [orders] = await db.execute('SELECT o.*, o.grand_total as total_amount, u.name as customer_name, u.phone as customer_phone FROM orders o JOIN users u ON o.user_id=u.id WHERE o.restaurant_id=? ORDER BY o.created_at DESC', [req.params.restaurantId]);
     for (const o of orders) {
       const [items] = await db.execute('SELECT * FROM order_items WHERE order_id=?', [o.id]);
@@ -431,8 +492,12 @@ router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
 });
 
 // Get restaurant analytics
-router.get('/restaurant/:restaurantId/analytics', authenticateToken, async (req, res) => {
+router.get('/restaurant/:restaurantId/analytics', authenticateToken, requireRole('restaurant', 'admin'), async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      const isOwner = await checkDirectRestaurantOwnership(req.params.restaurantId, req.user.id);
+      if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+    }
     const restaurantId = req.params.restaurantId;
     const { days = 30 } = req.query;
     const daysInt = parseInt(days) || 30;
@@ -462,6 +527,8 @@ router.get('/restaurant/:restaurantId/analytics', authenticateToken, async (req,
     const [summaryRows] = await db.execute(
       `SELECT COUNT(*) as total_orders, 
               SUM(CASE WHEN status='delivered' THEN grand_total ELSE 0 END) as total_revenue,
+              SUM(CASE WHEN status='delivered' THEN commission_amount ELSE 0 END) as total_commission,
+              SUM(CASE WHEN status='delivered' THEN restaurant_earnings ELSE 0 END) as total_restaurant_earnings,
               COUNT(CASE WHEN DATE(created_at) = CURDATE() THEN 1 END) as todays_orders,
               SUM(CASE WHEN DATE(created_at) = CURDATE() AND status='delivered' THEN grand_total ELSE 0 END) as todays_revenue,
               COUNT(CASE WHEN status='pending' THEN 1 END) as pending_orders
@@ -489,6 +556,8 @@ router.get('/restaurant/:restaurantId/analytics', authenticateToken, async (req,
       summary: {
         totalOrders: summaryRows[0]?.total_orders || 0,
         totalRevenue: parseFloat(summaryRows[0]?.total_revenue) || 0,
+        totalCommission: parseFloat(summaryRows[0]?.total_commission) || 0,
+        totalRestaurantEarnings: parseFloat(summaryRows[0]?.total_restaurant_earnings) || 0,
         todaysOrders: summaryRows[0]?.todays_orders || 0,
         todaysRevenue: parseFloat(summaryRows[0]?.todays_revenue) || 0,
         pendingOrders: summaryRows[0]?.pending_orders || 0

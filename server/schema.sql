@@ -144,6 +144,10 @@ CREATE TABLE orders (
     delivered_at TIMESTAMP NULL DEFAULT NULL,
     cancelled_at TIMESTAMP NULL DEFAULT NULL,
     cancel_reason TEXT DEFAULT NULL,
+    payment_method ENUM('COD', 'ONLINE') DEFAULT 'ONLINE',
+    payment_status ENUM('pending', 'paid', 'failed') DEFAULT 'pending',
+    commission_amount DECIMAL(10,2) DEFAULT 0.00,
+    restaurant_earnings DECIMAL(10,2) DEFAULT 0.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -325,3 +329,15 @@ CREATE TABLE promo_codes (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 21. settlements
+CREATE TABLE settlements (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    status ENUM('pending', 'completed') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    paid_at TIMESTAMP NULL DEFAULT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+

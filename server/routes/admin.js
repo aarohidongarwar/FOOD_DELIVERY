@@ -417,24 +417,48 @@ router.get('/finance/overview', authenticateToken, requireRole('admin'), async (
       ORDER BY date
     `);
 
-    // Restaurant payouts (total revenue per restaurant)
+    // Restaurant payouts (total revenue per restaurant minus platform commission = net earnings)
+    // We also need to subtract what has already been settled
     const [restaurantPayouts] = await db.execute(`
-      SELECT r.id, r.name, COALESCE(SUM(o.grand_total - o.delivery_fee),0) as payout, COUNT(o.id) as orders
+      SELECT 
+        r.id, 
+        r.name, 
+        COALESCE(SUM(o.restaurant_earnings), 0) as total_earnings, 
+        COUNT(o.id) as orders,
+        (SELECT COALESCE(SUM(amount), 0) FROM settlements WHERE entity_type='restaurant' AND entity_id=r.id AND status='completed') as total_settled
       FROM restaurants r 
       LEFT JOIN orders o ON r.id=o.restaurant_id AND o.status='delivered'
       GROUP BY r.id, r.name 
-      ORDER BY payout DESC
+      ORDER BY total_earnings DESC
     `);
 
-    // Driver payouts
+    // Map to calculate pending
+    const mappedRestaurantPayouts = restaurantPayouts.map(r => ({
+      ...r,
+      pending_balance: Math.max(0, parseFloat(r.total_earnings) - parseFloat(r.total_settled))
+    }));
+
+    // Driver payouts (delivery fees minus cash collected from COD)
     const [driverPayouts] = await db.execute(`
-      SELECT u.id, u.name, COALESCE(SUM(o.delivery_fee),0) as earnings, COUNT(o.id) as deliveries
+      SELECT 
+        u.id, 
+        u.name, 
+        COALESCE(SUM(o.delivery_fee), 0) as total_earnings, 
+        COUNT(o.id) as deliveries,
+        (SELECT COALESCE(SUM(grand_total), 0) FROM orders WHERE driver_id=u.id AND status='delivered' AND payment_method='COD') as cash_in_hand,
+        (SELECT COALESCE(SUM(amount), 0) FROM settlements WHERE entity_type='driver' AND entity_id=u.id AND status='completed') as total_settled
       FROM users u 
-      JOIN orders o ON o.driver_id=u.id AND o.status='delivered'
+      LEFT JOIN orders o ON o.driver_id=u.id AND o.status='delivered'
       WHERE u.role='driver' 
       GROUP BY u.id, u.name 
-      ORDER BY earnings DESC
+      ORDER BY total_earnings DESC
     `);
+
+    // Map to calculate pending (can be negative if driver owes platform)
+    const mappedDriverPayouts = driverPayouts.map(d => ({
+      ...d,
+      pending_balance: parseFloat(d.total_earnings) - parseFloat(d.cash_in_hand) - parseFloat(d.total_settled)
+    }));
 
     res.json({
       totalRevenue: parseFloat(totalRevenueRows[0].total) || 0,
@@ -444,8 +468,8 @@ router.get('/finance/overview', authenticateToken, requireRole('admin'), async (
       totalRefunds: parseFloat(totalRefundsRows[0].total) || 0,
       paymentMethods,
       revenueByDay,
-      restaurantPayouts,
-      driverPayouts
+      restaurantPayouts: mappedRestaurantPayouts,
+      driverPayouts: mappedDriverPayouts
     });
   } catch (err) { 
     console.error(err); 
@@ -473,6 +497,64 @@ router.get('/finance/transactions', authenticateToken, requireRole('admin'), asy
     res.json(transactions);
   } catch (err) { 
     res.status(500).json({ error: 'Failed' }); 
+  }
+});
+
+// GET Settlements History
+router.get('/finance/settlements', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const { entity_type } = req.query;
+    let q = `
+      SELECT s.*, 
+             COALESCE(r.name, u.name) as entity_name
+      FROM settlements s
+      LEFT JOIN restaurants r ON s.entity_type = 'restaurant' AND s.entity_id = r.id
+      LEFT JOIN users u ON s.entity_type = 'driver' AND s.entity_id = u.id
+    `;
+    const params = [];
+    if (entity_type) {
+      q += ' WHERE s.entity_type = ?';
+      params.push(entity_type);
+    }
+    q += ' ORDER BY s.created_at DESC';
+    
+    const [settlements] = await db.execute(q, params);
+    res.json(settlements);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch settlements' });
+  }
+});
+
+// POST Create Settlement
+router.post('/finance/settlements', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const { entity_type, entity_id, amount, transaction_ref } = req.body;
+    
+    if (!['restaurant', 'driver'].includes(entity_type) || !entity_id || !amount || !transaction_ref) {
+      return res.status(400).json({ error: 'Missing required fields or invalid entity_type' });
+    }
+
+    const id = uuidv4();
+    await db.execute(
+      `INSERT INTO settlements (id, entity_type, entity_id, amount, status, transaction_ref, created_at) 
+       VALUES (?, ?, ?, ?, 'completed', ?, NOW())`,
+      [id, entity_type, entity_id, amount, transaction_ref]
+    );
+
+    res.status(201).json({ success: true, id, message: 'Settlement recorded successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create settlement' });
+  }
+});
+
+router.post('/finance/settlements/approve/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    await db.execute("UPDATE settlements SET status='completed', updated_at=NOW() WHERE id=?", [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to approve settlement' });
   }
 });
 

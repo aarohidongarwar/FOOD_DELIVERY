@@ -28,6 +28,8 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-
 import L from 'leaflet';
 import { io } from 'socket.io-client';
 import useAuthStore from '../stores/authStore';
+import useToastStore from '../stores/toastStore';
+import useNotificationStore from '../stores/notificationStore';
 import api from '../api';
 import { fetchOSRMRoute, interpolateRoute } from '../utils/osrm';
 import 'leaflet/dist/leaflet.css';
@@ -84,6 +86,8 @@ function MapBoundsUpdater({ bounds }) {
 
 export default function DriverDashboard() {
   const { user, logout } = useAuthStore();
+  const toast = useToastStore();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotificationStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [earningsFilter, setEarningsFilter] = useState('This Month');
@@ -96,6 +100,7 @@ export default function DriverDashboard() {
   const [simulatingOrder, setSimulatingOrder] = useState(null);
   const [otpType, setOtpType] = useState('delivery');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [deliveryPaymentMethod, setDeliveryPaymentMethod] = useState('COD');
   const [newRequest, setNewRequest] = useState(null);
   const [showNavModal, setShowNavModal] = useState(false);
   const [navOrder, setNavOrder] = useState(null);
@@ -111,8 +116,14 @@ export default function DriverDashboard() {
     rating: 4.8,
     avgPerDelivery: 38,
     totalEarningsBreakdown: 75,
+    cashInHand: 0,
+    totalSettled: 0,
+    pendingSettled: 0,
     totalDeliveriesBreakdown: 2
   });
+
+  const [settlementModalOpen, setSettlementModalOpen] = useState(false);
+  const [driverUtr, setDriverUtr] = useState('');
 
   // Fetch OSRM route when navigation modal opens or destination changes
   useEffect(() => {
@@ -140,25 +151,6 @@ export default function DriverDashboard() {
 
   const [orders, setOrders] = useState([]);
 
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: 'Delivery Completed',
-      message: 'Order ORD-001-SAMPLE delivered. Earnings: Rs.45',
-      time: '9 May, 06:52 pm',
-      unread: false,
-      type: 'success'
-    },
-    {
-      id: 2,
-      title: 'New Order Assigned',
-      message: 'You have been assigned order ORD-003-SAMPLE from Dominos',
-      time: '9 May, 06:52 pm',
-      unread: true,
-      type: 'info'
-    }
-  ]);
-
   const [profileData, setProfileData] = useState({
     fullName: user?.name || 'Arjun Sharma',
     phone: user?.phone || '9876543210',
@@ -180,6 +172,9 @@ export default function DriverDashboard() {
           activeOrders: data.active_orders || 0,
           rating: data.rating || 5.0,
           totalEarningsBreakdown: data.totalEarnings || 0,
+          cashInHand: data.cashInHand || 0,
+          totalSettled: data.totalSettled || 0,
+          pendingSettled: data.pendingSettled || 0,
           monthEarnings: data.totalEarnings || 0,
           weekEarnings: data.totalEarnings || 0
         }));
@@ -293,12 +288,12 @@ export default function DriverDashboard() {
       await api.post(`/delivery/accept/${newRequest.orderId}`);
       setNewRequest(null);
       fetchActiveDeliveries();
-      alert('Order Accepted!');
+      toast.success('Order Accepted!');
     } catch (err) {
       if (err.response && err.response.status === 400) {
-        alert('Ah! Another delivery partner already claimed this order.');
+        toast.warning('Ah! Another delivery partner already claimed this order.');
       } else {
-        alert('Failed to accept order. It may have timed out.');
+        toast.error('Failed to accept order. It may have timed out.');
       }
       setNewRequest(null);
     }
@@ -354,23 +349,24 @@ export default function DriverDashboard() {
     ));
   };
 
-  const markAllRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, unread: false })));
+  const markAllNotificationsRead = () => {
+    markAllAsRead();
   };
 
   const handleProfileUpdate = (e) => {
     e.preventDefault();
-    alert('Profile updated successfully!');
+    toast.success('Profile updated successfully!');
   };
 
   const handlePasswordUpdate = (e) => {
     e.preventDefault();
-    alert('Password updated successfully!');
+    toast.success('Password updated successfully!');
   };
 
   const openOtpModal = (id, type) => {
     setSelectedOrderId(id);
     setOtpType(type);
+    setDeliveryPaymentMethod('COD');
     setShowOtpModal(true);
     setOtpInput('');
   };
@@ -380,26 +376,29 @@ export default function DriverDashboard() {
       try {
         if (otpType === 'pickup') {
           await api.post(`/delivery/pickup/${selectedOrderId}`, { otp: otpInput });
-          alert(`Order picked up successfully!`);
+          toast.success('Order picked up successfully!');
         } else {
-          await api.post(`/delivery/deliver/${selectedOrderId}`, { otp: otpInput });
-          alert(`Order delivered successfully!`);
+          await api.post(`/delivery/deliver/${selectedOrderId}`, { 
+            otp: otpInput, 
+            actualPaymentMethod: deliveryPaymentMethod === 'UPI' ? 'UPI' : 'COD'
+          });
+          toast.success('Order delivered successfully!');
           setActiveDeliveries(activeDeliveries.filter(o => o.id !== selectedOrderId));
           fetchStats(); // Update earnings
         }
         setShowOtpModal(false);
         fetchActiveDeliveries();
       } catch (err) {
-        alert('Failed to verify OTP');
+        toast.error('Failed to verify OTP');
       }
     } else {
-      alert('Please enter a valid 6-digit OTP');
+      toast.warning('Please enter a valid 6-digit OTP');
     }
   };
 
   const simulateJourney = (order) => {
     if (!currentLocation) {
-      alert("No current location known to start simulation. Make sure you are online and have location permission.");
+      toast.warning('No current location known to start simulation. Make sure you are online and have location permission.');
       return;
     }
     
@@ -483,7 +482,27 @@ export default function DriverDashboard() {
     });
   };
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const netBalance = stats.totalEarningsBreakdown - stats.cashInHand - stats.totalSettled;
+  const effectiveBalance = netBalance - (stats.pendingSettled || 0);
+
+  const handleSettleToPlatform = async (e) => {
+    e.preventDefault();
+    if (!driverUtr.trim()) return toast.warning('Please enter the UTR / Reference number');
+    try {
+      // Driver pays admin -> amount is negative from the driver's perspective in admin ledger,
+      // but we'll send it as the exact amount they owe. The backend will insert it as a negative amount.
+      const amountToSettle = Math.abs(netBalance);
+      // Let's send negative amount to backend to be consistent with admin logic where 
+      // positive amount = admin pays driver, negative amount = driver pays admin.
+      await api.post('/delivery/settle-cash', { amount: -amountToSettle, transaction_ref: driverUtr });
+      toast.success('Settlement request submitted! Waiting for Admin approval.');
+      setSettlementModalOpen(false);
+      setDriverUtr('');
+      fetchStats();
+    } catch (err) {
+      toast.error('Failed to submit settlement');
+    }
+  };
 
   return (
     <div className="driver-dashboard-layout">
@@ -579,7 +598,7 @@ export default function DriverDashboard() {
           </div>
           <div className="header-actions">
             {activeTab === 'notifications' && (
-              <button className="mark-read-btn" onClick={markAllRead}>
+              <button className="mark-read-btn" onClick={markAllNotificationsRead}>
                 <CheckCircle2 size={18} />
                 <span>Mark all read</span>
               </button>
@@ -747,7 +766,6 @@ export default function DriverDashboard() {
                       <div className="order-actions-row">
                         <button 
                           className="deliver-otp-btn"
-                          style={{backgroundColor: 'var(--ph-orange)', borderColor: 'var(--ph-orange)'}}
                           onClick={() => openOtpModal(order.id, 'pickup')}
                         >
                           Pickup (OTP)
@@ -807,7 +825,44 @@ export default function DriverDashboard() {
                 </div>
                 <div className="card-value">₹{stats.totalEarningsBreakdown}</div>
               </div>
+              <div className="dashboard-card" style={{border: '1px solid var(--ph-orange)'}}>
+                <div className="card-top">
+                  <span className="card-label">Cash in Hand (COD)</span>
+                  <IndianRupee size={18} className="card-icon text-orange" />
+                </div>
+                <div className="card-value text-orange">₹{Math.max(0, -netBalance).toLocaleString()}</div>
+              </div>
             </div>
+
+            {effectiveBalance < 0 && (
+              <div className="settlement-alert animate-fade-in" style={{ backgroundColor: '#fee2e2', border: '1px solid #ef4444', padding: '16px', borderRadius: '8px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 4px 0', color: '#b91c1c' }}>You owe the platform: ₹{Math.abs(effectiveBalance).toLocaleString()}</h3>
+                  <p style={{ margin: 0, color: '#991b1b', fontSize: '0.9rem' }}>Please settle your COD collections to continue receiving orders.</p>
+                </div>
+                <button 
+                  className="btn-primary" 
+                  style={{ backgroundColor: '#dc2626' }}
+                  onClick={() => setSettlementModalOpen(true)}
+                >
+                  Settle Balance
+                </button>
+              </div>
+            )}
+
+            {stats.pendingSettled < 0 && netBalance < 0 && effectiveBalance >= 0 && (
+              <div className="settlement-alert animate-fade-in" style={{ backgroundColor: '#fef3c7', border: '1px solid #f59e0b', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
+                <h3 style={{ margin: '0 0 4px 0', color: '#b45309' }}>Deposit Pending Approval</h3>
+                <p style={{ margin: 0, color: '#92400e', fontSize: '0.9rem' }}>You have submitted a settlement request of ₹{Math.abs(stats.pendingSettled).toLocaleString()} which is waiting for admin verification.</p>
+              </div>
+            )}
+
+            {netBalance > 0 && (
+              <div className="settlement-alert animate-fade-in" style={{ backgroundColor: '#dcfce7', border: '1px solid #22c55e', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
+                <h3 style={{ margin: '0 0 4px 0', color: '#166534' }}>Net Balance: ₹{netBalance.toLocaleString()}</h3>
+                <p style={{ margin: 0, color: '#15803d', fontSize: '0.9rem' }}>The platform owes you this amount. It will be settled to your bank account soon.</p>
+              </div>
+            )}
 
             {/* Filter Tabs */}
             <div className="filter-tabs">
@@ -848,19 +903,24 @@ export default function DriverDashboard() {
         {activeTab === 'notifications' && (
           <section className="notifications-list">
             {notifications.map(notif => (
-              <div key={notif.id} className={`notification-card ${notif.unread ? 'unread' : ''}`}>
-                <div className={`notif-icon-box ${notif.type}`}>
+              <div 
+                key={notif.id} 
+                className={`notification-card ${!notif.is_read ? 'unread' : ''}`}
+                onClick={() => { if(!notif.is_read) markAsRead(notif.id); }}
+                style={{ cursor: !notif.is_read ? 'pointer' : 'default' }}
+              >
+                <div className={`notif-icon-box ${notif.type || 'info'}`}>
                   <Package size={20} />
                 </div>
                 <div className="notif-content">
                   <div className="notif-header">
                     <h3 className="notif-title">
                       {notif.title}
-                      {notif.unread && <span className="unread-dot"></span>}
+                      {!notif.is_read && <span className="unread-dot"></span>}
                     </h3>
                   </div>
                   <p className="notif-message">{notif.message}</p>
-                  <span className="notif-time">{notif.time}</span>
+                  <span className="notif-time">{new Date(notif.created_at).toLocaleString()}</span>
                 </div>
               </div>
             ))}
@@ -1069,70 +1129,165 @@ export default function DriverDashboard() {
       </main>
 
       {/* OTP Modal */}
-      {showOtpModal && (
-        <div className="modal-overlay">
-          <div className="otp-modal animate-fade-in">
-            <button className="modal-close" onClick={() => setShowOtpModal(false)}>
-              <X size={24} />
-            </button>
-            
-            <div className="modal-header">
-              <div className="success-icon-circle">
-                <CheckCircle2 size={28} color={otpType === 'pickup' ? '#F59E0B' : '#10B981'} />
+      {showOtpModal && (() => {
+        const currentModalOrder = activeDeliveries.find(o => o.id === selectedOrderId);
+        return (
+          <div className="modal-overlay">
+            <div className="otp-modal animate-fade-in" style={{maxHeight: '90vh', overflowY: 'auto'}}>
+              <button className="modal-close" onClick={() => setShowOtpModal(false)}>
+                <X size={24} />
+              </button>
+              
+              <div className="modal-header">
+                <div className="success-icon-circle">
+                  <CheckCircle2 size={28} color={otpType === 'pickup' ? '#F59E0B' : '#10B981'} />
+                </div>
+                <h2>Verify {otpType === 'pickup' ? 'Pickup' : 'Delivery'} OTP</h2>
               </div>
-              <h2>Verify {otpType === 'pickup' ? 'Pickup' : 'Delivery'} OTP</h2>
+
+              <div className="modal-body">
+                <p>Enter the 6-digit OTP provided by the {otpType === 'pickup' ? 'Restaurant' : 'Customer'} for order <strong>{selectedOrderId?.substring(0,8)}</strong></p>
+                
+                <div className="otp-input-wrapper">
+                  <input 
+                    type="text" 
+                    maxLength="6"
+                    placeholder="Enter 6-digit OTP"
+                    value={otpInput}
+                    onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
+                    className="otp-input-field"
+                  />
+                </div>
+
+                {otpType === 'delivery' && currentModalOrder?.payment_method === 'COD' && (
+                  <div className="payment-collection-section" style={{marginTop: '20px', padding: '15px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
+                    <h3 style={{fontSize: '1rem', marginBottom: '12px', textAlign: 'center'}}>Collect Payment: <span style={{color: 'var(--primary)', fontSize: '1.2rem'}}>₹{currentModalOrder.total_amount}</span></h3>
+                    
+                    <div style={{display: 'flex', gap: '10px', marginBottom: '15px'}}>
+                      <button 
+                        style={{
+                          flex: 1, padding: '10px', borderRadius: '6px', fontWeight: 'bold',
+                          backgroundColor: deliveryPaymentMethod === 'COD' ? '#10B981' : '#fff',
+                          color: deliveryPaymentMethod === 'COD' ? '#fff' : '#64748b',
+                          border: `1px solid ${deliveryPaymentMethod === 'COD' ? '#10B981' : '#cbd5e1'}`,
+                          cursor: 'pointer', transition: 'all 0.2s'
+                        }}
+                        onClick={() => setDeliveryPaymentMethod('COD')}
+                      >
+                        Cash
+                      </button>
+                      <button 
+                        style={{
+                          flex: 1, padding: '10px', borderRadius: '6px', fontWeight: 'bold',
+                          backgroundColor: deliveryPaymentMethod === 'UPI' ? '#3B82F6' : '#fff',
+                          color: deliveryPaymentMethod === 'UPI' ? '#fff' : '#64748b',
+                          border: `1px solid ${deliveryPaymentMethod === 'UPI' ? '#3B82F6' : '#cbd5e1'}`,
+                          cursor: 'pointer', transition: 'all 0.2s'
+                        }}
+                        onClick={() => setDeliveryPaymentMethod('UPI')}
+                      >
+                        UPI / QR
+                      </button>
+                    </div>
+
+                    {deliveryPaymentMethod === 'UPI' && (
+                      <div className="qr-container" style={{textAlign: 'center', padding: '10px', backgroundColor: 'white', borderRadius: '8px'}}>
+                        <img 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`upi://pay?pa=quickbite@upi&pn=QuickBite&am=${currentModalOrder.total_amount}`)}`} 
+                          alt="UPI QR Code" 
+                          style={{width: '180px', height: '180px', margin: '0 auto'}}
+                        />
+                        <p style={{fontSize: '0.85rem', color: '#64748b', marginTop: '10px'}}>Ask customer to scan and pay ₹{currentModalOrder.total_amount}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <button 
+                  className="verify-btn"
+                  style={{ backgroundColor: otpType === 'pickup' ? '#F59E0B' : '#10B981', marginTop: '20px' }}
+                  onClick={() => handleVerifyDelivery(deliveryPaymentMethod)}
+                >
+                  {otpType === 'pickup' ? 'Verify & Pickup' : (deliveryPaymentMethod === 'UPI' ? 'Verify & Confirm UPI Payment' : 'Verify & Complete Delivery')}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Settlement Modal (Driver App) */}
+      {settlementModalOpen && effectiveBalance < 0 && (
+        <div className="modal-overlay fade-in" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000}}>
+          <div className="modal-content scale-in" style={{backgroundColor: 'white', padding: '24px', borderRadius: '12px', width: '100%', maxWidth: '400px'}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+              <h2 style={{margin: 0, fontSize: '1.25rem'}}>Settle Cash to Platform</h2>
+              <button onClick={() => setSettlementModalOpen(false)} style={{background: 'none', border: 'none', cursor: 'pointer'}}><X size={20} /></button>
+            </div>
+            
+            <div style={{marginBottom: '20px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px', textAlign: 'center'}}>
+              <p style={{margin: '0 0 8px 0', color: '#64748b', fontSize: '0.9rem'}}>Amount to Pay</p>
+              <h2 style={{margin: 0, color: '#dc2626', fontSize: '2rem'}}>₹{Math.abs(effectiveBalance).toLocaleString()}</h2>
             </div>
 
-            <div className="modal-body">
-              <p>Enter the 6-digit OTP provided by the {otpType === 'pickup' ? 'Restaurant' : 'Customer'} for order <strong>{selectedOrderId?.substring(0,8)}</strong></p>
-              
-              <div className="otp-input-wrapper">
+            <div className="qr-container" style={{textAlign: 'center', marginBottom: '20px'}}>
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`upi://pay?pa=admin@upi&pn=QuickBiteAdmin&am=${Math.abs(effectiveBalance)}`)}`} 
+                alt="Admin UPI QR Code" 
+                style={{width: '180px', height: '180px', margin: '0 auto', display: 'block'}}
+              />
+              <p style={{fontSize: '0.85rem', color: '#64748b', marginTop: '10px'}}>Scan this QR code with any UPI app (GPay, PhonePe, Paytm) to pay.</p>
+            </div>
+
+            <form onSubmit={handleSettleToPlatform}>
+              <div className="form-group" style={{marginBottom: '20px'}}>
+                <label style={{display: 'block', marginBottom: '8px', fontWeight: '500'}}>Enter UTR / Reference Number *</label>
                 <input 
                   type="text" 
-                  maxLength="6"
-                  placeholder="Enter 6-digit OTP"
-                  value={otpInput}
-                  onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
-                  className="otp-input-field"
+                  value={driverUtr}
+                  onChange={(e) => setDriverUtr(e.target.value)}
+                  placeholder="e.g. 123456789012"
+                  required
+                  style={{width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '1rem', boxSizing: 'border-box'}}
                 />
               </div>
 
               <button 
-                className="verify-btn"
-                style={{ backgroundColor: otpType === 'pickup' ? '#F59E0B' : '#10B981' }}
-                onClick={handleVerifyDelivery}
+                type="submit" 
+                className="btn-primary" 
+                style={{width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center'}}
               >
-                {otpType === 'pickup' ? 'Verify & Confirm Pickup' : 'Verify & Complete Delivery'}
+                Submit Deposit Request
               </button>
-            </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* New Request Modal */}
+      {/* New Request Modal */}`
       {newRequest && (
         <div className="modal-overlay fade-in">
-          <div className="modal-content scale-in" style={{maxWidth: '400px', textAlign: 'center', padding: '32px 24px'}}>
-            <div style={{background: 'var(--ph-orange-bg)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto'}}>
-              <Bell size={32} color="var(--ph-orange)" />
+          <div className="new-request-modal scale-in">
+            <div style={{background: 'rgba(255, 82, 0, 0.1)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto'}}>
+              <Bell size={32} color="#ff5200" />
             </div>
             <h2 style={{margin: '0 0 8px 0'}}>New Delivery Request!</h2>
-            <h3 style={{margin: '0 0 16px 0', color: 'var(--ph-text-muted)'}}>{newRequest.restaurant}</h3>
+            <h3 style={{margin: '0 0 16px 0'}}>{newRequest.restaurant}</h3>
             
-            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '24px', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
+            <div className="new-request-stats">
               <div style={{textAlign: 'left'}}>
-                <span style={{fontSize: '0.85rem', color: 'var(--ph-text-muted)'}}>Distance</span>
-                <p style={{margin: '4px 0 0 0', fontWeight: 'bold'}}>{(newRequest.distance / 1000).toFixed(1)} km</p>
+                <span className="new-request-stats-label">Distance</span>
+                <p className="new-request-stats-val" style={{color: '#ffffff', margin: '4px 0 0 0'}}>{(newRequest.distance / 1000).toFixed(1)} km</p>
               </div>
               <div style={{textAlign: 'right'}}>
-                <span style={{fontSize: '0.85rem', color: 'var(--ph-text-muted)'}}>Est. Earning</span>
-                <p style={{margin: '4px 0 0 0', fontWeight: 'bold', color: 'var(--ph-green)'}}>₹{newRequest.fee}</p>
+                <span className="new-request-stats-label">Est. Earning</span>
+                <p className="new-request-stats-val" style={{color: '#10B981', margin: '4px 0 0 0'}}>₹{newRequest.fee}</p>
               </div>
             </div>
             
             <div style={{display: 'flex', gap: '12px'}}>
-              <button className="btn-cancel" style={{flex: 1}} onClick={handleDeclineRequest}>Decline</button>
-              <button className="btn-primary" style={{flex: 1, backgroundColor: 'var(--ph-green)'}} onClick={handleAcceptRequest}>Accept</button>
+              <button className="new-request-decline-btn" onClick={handleDeclineRequest}>Decline</button>
+              <button className="new-request-accept-btn" onClick={handleAcceptRequest}>Accept</button>
             </div>
           </div>
         </div>
@@ -1232,7 +1387,7 @@ export default function DriverDashboard() {
               ) : (
                 <button 
                   className="deliver-otp-btn"
-                  style={{backgroundColor: 'var(--ph-orange)', borderColor: 'var(--ph-orange)', flex: 1}}
+                  style={{ flex: 1 }}
                   onClick={() => { setShowNavModal(false); openOtpModal(navOrder.id, 'pickup'); }}
                 >
                   Pickup (OTP)

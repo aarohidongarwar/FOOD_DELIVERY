@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets and Data
+.env
+data/*.db
+data/*.db-wal
+data/*.db-shm

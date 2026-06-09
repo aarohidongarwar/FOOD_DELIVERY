@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { User, Mail, Phone, MapPin, Save, Store } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
+import useToastStore from '../stores/toastStore';
 import api from '../api';
 import './Profile.css';
 
 export default function Profile() {
   const { user, updateProfile, wallet, fetchWallet, addWalletFunds } = useAuthStore();
+  const toast = useToastStore();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -44,7 +46,7 @@ export default function Profile() {
   const handleAddFunds = async () => {
     const amt = parseFloat(addAmount);
     if (isNaN(amt) || amt <= 0) {
-      alert('Please enter a valid amount');
+      toast.warning('Please enter a valid amount');
       return;
     }
 
@@ -52,9 +54,9 @@ export default function Profile() {
     try {
       await addWalletFunds(amt);
       setAddAmount('');
-      alert('Funds added successfully!');
+      toast.success('Funds added successfully!');
     } catch (err) {
-      alert('Failed to add funds. Please try again.');
+      toast.error('Failed to add funds. Please try again.');
     } finally {
       setAddingFunds(false);
     }
@@ -70,9 +72,9 @@ export default function Profile() {
     try {
       await updateProfile(formData);
       setIsEditing(false);
-      alert('Profile updated successfully!');
+      toast.success('Profile updated successfully!');
     } catch (err) {
-      alert('Failed to update profile');
+      toast.error('Failed to update profile');
     } finally {
       setSaving(false);
     }

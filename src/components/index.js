@@ -6,6 +6,7 @@ export { default as CartDrawer } from './CartDrawer';
 export { default as OrderStatusBadge } from './OrderStatusBadge';
 export { default as ProtectedRoute } from './ProtectedRoute';
 export { default as LoadingSpinner } from './LoadingSpinner';
+export { default as GlobalSocket } from './GlobalSocket';
 export { default as SplashScreen } from './SplashScreen';
 export { default as ScrollToTop } from './ScrollToTop';
 export { default as LocationPopup } from './LocationPopup';

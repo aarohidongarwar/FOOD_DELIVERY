@@ -3,17 +3,22 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../db.js';
 import { generateToken, authenticateToken } from '../middleware/auth.js';
+import { validateRegistration } from '../middleware/validate.js';
 
 const router = express.Router();
 
 // Register
-router.post('/register', async (req, res) => {
+router.post('/register', validateRegistration, async (req, res) => {
   try {
     const { 
       name, email, password, phone, role = 'customer', address,
       vehicleType, vehicleNumber, licenseNumber, emergencyContact 
     } = req.body;
-    
+    const allowedRoles = ['customer', 'driver', 'restaurant'];
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email and password are required' });
     }

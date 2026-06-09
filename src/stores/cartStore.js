@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 
-// Get current logged-in user's ID for scoping cart data
+// Get current logged-in user's token
+const getToken = () => localStorage.getItem('quickbite_token');
+
 const getUserId = () => {
   try {
     const userStr = localStorage.getItem('quickbite_user');
@@ -16,32 +18,63 @@ const getCartKey = () => `quickbite_cart_${getUserId()}`;
 const getRestaurantKey = () => `quickbite_cart_restaurant_${getUserId()}`;
 const getRestaurantNameKey = () => `quickbite_cart_restaurant_name_${getUserId()}`;
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
 const useCartStore = create((set, get) => ({
   items: JSON.parse(localStorage.getItem(getCartKey()) || '[]'),
   restaurantId: localStorage.getItem(getRestaurantKey()) || null,
   restaurantName: localStorage.getItem(getRestaurantNameKey()) || '',
   deliveryFee: 29,
 
-  addItem: (item, restaurantId, restaurantName) => {
+  // Sync with server if logged in
+  syncFromServer: async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/cart`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          const restaurantId = data[0].restaurant_id;
+          const restaurantName = data[0].restaurant_name;
+          const mappedItems = data.map(i => ({
+            menu_item_id: i.menu_item_id,
+            name: i.name,
+            price: i.price,
+            quantity: i.quantity,
+            image_url: i.image_url,
+            is_veg: i.is_veg
+          }));
+          localStorage.setItem(getCartKey(), JSON.stringify(mappedItems));
+          localStorage.setItem(getRestaurantKey(), restaurantId);
+          localStorage.setItem(getRestaurantNameKey(), restaurantName);
+          set({ items: mappedItems, restaurantId, restaurantName });
+        }
+      }
+    } catch (err) { console.error('Failed to sync cart from server:', err); }
+  },
+
+  addItem: async (item, restaurantId, restaurantName) => {
     const state = get();
 
-    // If cart has items from a different restaurant, clear first
     if (state.restaurantId && state.restaurantId !== restaurantId) {
       if (!window.confirm('Your cart contains items from another restaurant. Clear cart and add this item?')) {
         return false;
       }
-      set({ items: [], restaurantId: null, restaurantName: '' });
+      get().clearCart();
     }
 
-    const existing = state.items.find(i => i.menu_item_id === item.id);
+    const existing = get().items.find(i => i.menu_item_id === item.id);
     let newItems;
 
     if (existing) {
-      newItems = state.items.map(i =>
+      newItems = get().items.map(i =>
         i.menu_item_id === item.id ? { ...i, quantity: i.quantity + 1 } : i
       );
     } else {
-      newItems = [...(state.restaurantId === restaurantId ? state.items : []), {
+      newItems = [...(get().restaurantId === restaurantId ? get().items : []), {
         menu_item_id: item.id,
         name: item.name,
         price: item.price,
@@ -55,6 +88,16 @@ const useCartStore = create((set, get) => ({
     localStorage.setItem(getRestaurantKey(), restaurantId);
     localStorage.setItem(getRestaurantNameKey(), restaurantName);
     set({ items: newItems, restaurantId, restaurantName, deliveryFee: item.delivery_fee || 29 });
+
+    // Server call
+    const token = getToken();
+    if (token) {
+      fetch(`${API_URL}/cart`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ restaurant_id: restaurantId, menu_item_id: item.id, quantity: 1 })
+      }).catch(console.error);
+    }
     return true;
   },
 
@@ -68,6 +111,14 @@ const useCartStore = create((set, get) => ({
     } else {
       set({ items: newItems });
     }
+
+    const token = getToken();
+    if (token) {
+      fetch(`${API_URL}/cart/${menuItemId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      }).catch(console.error);
+    }
   },
 
   updateQuantity: (menuItemId, quantity) => {
@@ -80,6 +131,15 @@ const useCartStore = create((set, get) => ({
     );
     localStorage.setItem(getCartKey(), JSON.stringify(newItems));
     set({ items: newItems });
+
+    const token = getToken();
+    if (token) {
+      fetch(`${API_URL}/cart/${menuItemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ quantity })
+      }).catch(console.error);
+    }
   },
 
   clearCart: () => {
@@ -87,15 +147,25 @@ const useCartStore = create((set, get) => ({
     localStorage.removeItem(getRestaurantKey());
     localStorage.removeItem(getRestaurantNameKey());
     set({ items: [], restaurantId: null, restaurantName: '' });
+
+    const token = getToken();
+    if (token) {
+      fetch(`${API_URL}/cart`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      }).catch(console.error);
+    }
   },
 
-  // Called after login to load the correct user's cart into memory
-  refreshCart: () => set(() => {
-    const items = JSON.parse(localStorage.getItem(getCartKey()) || '[]');
-    const restaurantId = localStorage.getItem(getRestaurantKey()) || null;
-    const restaurantName = localStorage.getItem(getRestaurantNameKey()) || '';
-    return { items, restaurantId, restaurantName };
-  }),
+  refreshCart: () => {
+    set(() => {
+      const items = JSON.parse(localStorage.getItem(getCartKey()) || '[]');
+      const restaurantId = localStorage.getItem(getRestaurantKey()) || null;
+      const restaurantName = localStorage.getItem(getRestaurantNameKey()) || '';
+      return { items, restaurantId, restaurantName };
+    });
+    get().syncFromServer();
+  },
 
   getSubtotal: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
   getTotal: () => get().getSubtotal() + get().deliveryFee,

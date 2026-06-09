@@ -8,6 +8,7 @@ import {
   ChevronRight, ChevronLeft, Check, Store
 } from 'lucide-react';
 import api from '../api';
+import useToastStore from '../stores/toastStore';
 import './RestaurantRegistration.css';
 
 // Fix Leaflet icons
@@ -29,6 +30,7 @@ function LocationMarker({ position, setPosition, onLocationSelect }) {
 }
 
 export default function RestaurantOnboarding({ onComplete }) {
+  const toast = useToastStore();
   const [step, setStep] = useState(1);
   const [position, setPosition] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -46,7 +48,10 @@ export default function RestaurantOnboarding({ onComplete }) {
     openingTime: '09:00',
     closingTime: '22:00',
     deliveryRadius: '5',
-    preparationTime: '30'
+    preparationTime: '30',
+    fssaiUrl: '',
+    panUrl: '',
+    storeUrl: ''
   });
 
   const handleLocationSelect = async (latlng) => {
@@ -89,18 +94,40 @@ export default function RestaurantOnboarding({ onComplete }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileUpload = async (e, docId) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const uploadData = new FormData();
+    uploadData.append('file', file);
+    
+    setUploading(true);
+    try {
+      const { data } = await api.post('/upload', uploadData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setFormData(prev => ({ ...prev, [`${docId}Url`]: data.url }));
+    } catch (err) {
+      toast.error('File upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const validateStep = () => {
     if (step === 1) return formData.restaurantName && formData.cuisineType && formData.businessType;
     if (step === 2) return formData.fullAddress && formData.city && position;
     if (step === 3) return formData.fssaiLicense && formData.panCard;
-    if (step === 4) return true; // File uploads mock
+    if (step === 4) return formData.fssaiUrl && formData.panUrl && formData.storeUrl;
     if (step === 5) return formData.openingTime && formData.closingTime;
     return true;
   };
 
   const handleNext = async () => {
     if (!validateStep()) {
-      alert("Please fill all required fields before continuing.");
+      toast.error("Please fill all required fields before continuing.");
       return;
     }
     
@@ -123,13 +150,19 @@ export default function RestaurantOnboarding({ onComplete }) {
             openingTime: formData.openingTime,
             closingTime: formData.closingTime,
             deliveryRadius: formData.deliveryRadius,
-            preparationTime: formData.preparationTime
+            preparationTime: formData.preparationTime,
+            documents: {
+              fssaiUrl: formData.fssaiUrl,
+              panUrl: formData.panUrl,
+              storeUrl: formData.storeUrl
+            }
           }
         };
         await api.post('/restaurants/owner/register', payload);
         onComplete();
+        toast.success("Profile saved successfully");
       } catch (err) {
-        alert("Failed to save profile. Please try again.");
+        toast.error("Failed to save profile. Please try again.");
         setSubmitting(false);
       }
     }
@@ -269,8 +302,9 @@ export default function RestaurantOnboarding({ onComplete }) {
                     { id: 'store', label: 'Store Front Photo (JPG/PNG)' }
                   ].map((doc) => (
                     <div key={doc.id} className="upload-item" style={{marginBottom: '15px'}}>
-                      <label style={{fontWeight:'bold', display:'block', marginBottom:'5px'}}>{doc.label}</label>
-                      <input type="file" className="form-control" accept=".jpg,.jpeg,.png,.pdf" />
+                      <label style={{fontWeight:'bold', display:'block', marginBottom:'5px'}}>{doc.label} <span>*</span></label>
+                      <input type="file" className="form-control" accept=".jpg,.jpeg,.png,.pdf" onChange={(e) => handleFileUpload(e, doc.id)} disabled={uploading} />
+                      {formData[`${doc.id}Url`] && <span style={{color: 'green', fontSize: '12px', marginTop: '4px', display: 'block'}}>✓ Uploaded successfully</span>}
                     </div>
                   ))}
                 </div>

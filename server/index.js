@@ -4,6 +4,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import cookieParser from 'cookie-parser';
 
 import db from './db.js';
 import authRoutes from './routes/auth.js';
@@ -12,6 +13,9 @@ import menuRoutes from './routes/menu.js';
 import orderRoutes from './routes/orders.js';
 import deliveryRoutes from './routes/delivery.js';
 import adminRoutes from './routes/admin.js';
+import cartRoutes from './routes/cart.js';
+import notificationRoutes from './routes/notifications.js';
+import uploadRoutes from './routes/upload.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -23,7 +27,9 @@ const io = new Server(httpServer, {
 
 // Middleware
 app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3000'], credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(cookieParser());
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Make io accessible in routes
 app.set('io', io);
@@ -35,6 +41,9 @@ app.use('/api/menu', menuRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -54,8 +63,7 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
   return R * c; 
 }
 
-const notifiedOrders = new Set();
-const connectedUsers = new Map();
+import { connectedUsers, notifiedOrders } from './state.js';
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
@@ -107,11 +115,14 @@ io.on('connection', (socket) => {
   });
 });
 
-// Export for use in routes
-export { io, connectedUsers };
+// Export for use in routes and testing
+export { io, app };
 
 const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📦 Database ready`);
-});
+
+if (process.env.NODE_ENV !== 'test') {
+  httpServer.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📦 Database ready`);
+  });
+}

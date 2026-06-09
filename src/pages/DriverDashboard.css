@@ -1267,5 +1267,94 @@
   border-radius: 8px;
 }
 
+/* New Request Modal (Dark Premium Theme) */
+.new-request-modal {
+  background-color: #1a1a1a;
+  color: #ffffff;
+  width: 95%;
+  max-width: 400px;
+  border-radius: 20px;
+  padding: 32px 24px;
+  position: relative;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border: 1px solid #333;
+  text-align: center;
+}
+
+.new-request-modal h2 {
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.new-request-modal h3 {
+  color: #9CA3AF;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.new-request-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  background-color: #262626;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #333;
+}
+
+.new-request-stats-label {
+  font-size: 0.85rem;
+  color: #9CA3AF;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.new-request-stats-val {
+  margin-top: 4px;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.new-request-decline-btn {
+  flex: 1;
+  background-color: #2d2d2d;
+  color: #e5e7eb;
+  border: 1px solid #444;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.new-request-decline-btn:hover {
+  background-color: #3d3d3d;
+  color: #ffffff;
+}
+
+.new-request-accept-btn {
+  flex: 1;
+  background-color: #10B981;
+  color: #ffffff;
+  border: none;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.new-request-accept-btn:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+
 
 

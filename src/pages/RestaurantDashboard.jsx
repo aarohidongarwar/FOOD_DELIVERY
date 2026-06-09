@@ -32,8 +32,11 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import useAuthStore from '../stores/authStore';
+import useToastStore from '../stores/toastStore';
+import useConfirmStore from '../stores/confirmStore';
 import api from '../api';
 import { fetchOSRMRoute } from '../utils/osrm';
+import useNotificationStore from '../stores/notificationStore';
 import './RestaurantDashboard.css';
 import RestaurantOnboarding from './RestaurantOnboarding';
 
@@ -81,6 +84,9 @@ function MapBoundsUpdater({ bounds }) {
 
 const RestaurantDashboard = () => {
   const { user, logout } = useAuthStore();
+  const toast = useToastStore();
+  const { confirm } = useConfirmStore();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotificationStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -175,14 +181,33 @@ const RestaurantDashboard = () => {
   // Status mapping: DB values → UI-friendly values
   const dbToUiStatus = (status) => {
     if (status === 'confirmed') return 'accepted';
-    if (status === 'ready_for_pickup' || status === 'driver_assigned' || status === 'out_for_delivery') return 'ready';
+    if (status === 'ready_for_pickup') return 'ready';
+    if (status === 'driver_assigned') return 'picked_up';
+    if (status === 'out_for_delivery') return 'out_for_delivery';
     return status;
   };
   
   const uiToDbStatus = (status) => {
     if (status === 'accepted') return 'confirmed';
     if (status === 'ready') return 'ready_for_pickup';
+    if (status === 'picked_up') return 'driver_assigned';
+    if (status === 'out_for_delivery') return 'out_for_delivery';
     return status;
+  };
+
+  // Helper to convert tab label to status key for filtering
+  const tabToStatusKey = (tab) => {
+    const map = {
+      'Pending': 'pending',
+      'Accepted': 'accepted',
+      'Preparing': 'preparing',
+      'Ready': 'ready',
+      'Picked Up': 'picked_up',
+      'Out for Delivery': 'out_for_delivery',
+      'Delivered': 'delivered',
+      'Cancelled': 'cancelled'
+    };
+    return map[tab] || tab.toLowerCase();
   };
 
   // Transform raw order from backend to dashboard-friendly format
@@ -280,9 +305,6 @@ const RestaurantDashboard = () => {
     monthlyGrowth: 15
   };
 
-  const notificationsData = [
-    { id: 1, type: 'order', title: 'Welcome', desc: 'Welcome to your partner hub!', time: 'Just now', unread: true, iconColor: 'green' }
-  ];
 
   const analyticsChartData = analytics?.dailyData?.length > 0 
     ? analytics.dailyData 
@@ -307,8 +329,8 @@ const RestaurantDashboard = () => {
 
   const revenueStats = { 
     gross: Math.round(totalRevenue * 100) / 100, 
-    commission: Math.round(totalRevenue * 0.18 * 100) / 100, 
-    net: Math.round(totalRevenue * 0.82 * 100) / 100, 
+    commission: analytics?.summary?.totalCommission ? Math.round(analytics.summary.totalCommission * 100) / 100 : Math.round(totalRevenue * 0.10 * 100) / 100, 
+    net: analytics?.summary?.totalRestaurantEarnings ? Math.round(analytics.summary.totalRestaurantEarnings * 100) / 100 : Math.round(totalRevenue * 0.90 * 100) / 100, 
     pending: 0 
   };
   const settlements = [];
@@ -336,9 +358,10 @@ const RestaurantDashboard = () => {
       setProducts([...products, { ...data, available: data.is_available === 1 || data.is_available === true, stock: 50 }]);
       setIsProductModalOpen(false);
       setNewProduct({ name: '', description: '', price: 0, category: 'Main Course', stock: 50, available: true });
+      toast.success('Product added successfully!');
     } catch(err) {
       console.error(err);
-      alert('Failed to add product');
+      toast.error('Failed to add product');
     }
   };
 
@@ -356,20 +379,28 @@ const RestaurantDashboard = () => {
       });
       setProducts(products.map(p => p.id === data.id ? { ...data, available: data.is_available === 1 || data.is_available === true, stock: p.stock } : p));
       setEditingProduct(null);
+      toast.success('Product updated successfully!');
     } catch(err) {
       console.error(err);
-      alert('Failed to update product');
+      toast.error('Failed to update product');
     }
   };
 
   const handleDeleteProduct = async (productId) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Product',
+      message: 'Are you sure you want to delete this product?',
+      variant: 'danger',
+      confirmText: 'Delete'
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/menu/${productId}`);
       setProducts(products.filter(p => p.id !== productId));
+      toast.success('Product deleted successfully');
     } catch(err) {
       console.error(err);
-      alert('Failed to delete product');
+      toast.error('Failed to delete product');
     }
   };
 
@@ -379,7 +410,7 @@ const RestaurantDashboard = () => {
       setProducts(products.map(p => p.id === product.id ? { ...p, available: !p.available } : p));
     } catch(err) {
       console.error(err);
-      alert('Failed to toggle availability');
+      toast.error('Failed to toggle availability');
     }
   };
 
@@ -401,9 +432,10 @@ const RestaurantDashboard = () => {
       if (selectedOrder && selectedOrder.id === orderId) {
         setSelectedOrder(updatedOrder);
       }
+      toast.success(`Order ${newStatus} successfully`);
     } catch(err) {
       console.error(err);
-      alert('Failed to update status');
+      toast.error('Failed to update status');
     }
   };
 
@@ -413,10 +445,10 @@ const RestaurantDashboard = () => {
     try {
       const { data } = await api.put('/restaurants/owner/me', settingsForm);
       setRestaurant(data);
-      alert('Settings saved successfully!');
+      toast.success('Settings saved successfully!');
     } catch(err) {
       console.error(err);
-      alert('Failed to save settings');
+      toast.error('Failed to save settings');
     } finally {
       setSavingSettings(false);
     }
@@ -427,9 +459,10 @@ const RestaurantDashboard = () => {
     try {
       const { data } = await api.put('/restaurants/owner/toggle-status', { is_open: !restaurant.is_open });
       setRestaurant(data);
+      toast.success(`Restaurant is now ${!restaurant.is_open ? 'Open' : 'Closed'}`);
     } catch(err) {
       console.error(err);
-      alert('Failed to toggle status');
+      toast.error('Failed to toggle status');
     }
   };
 
@@ -460,7 +493,7 @@ const RestaurantDashboard = () => {
     { id: 'reviews', label: 'Reviews', icon: Star },
   ];
 
-  const orderTabsList = ['Pending', 'Accepted', 'Preparing', 'Ready', 'Delivered', 'Cancelled'];
+  const orderTabsList = ['Pending', 'Accepted', 'Preparing', 'Ready', 'Picked Up', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
   const getStockStatus = (stock) => {
     if (stock === 0) return { label: 'Out of Stock', color: 'red', bg: 'var(--ph-red-bg)' };
@@ -878,7 +911,7 @@ const RestaurantDashboard = () => {
             </div>
 
             <div className="orders-list-full">
-              {ordersData.filter(o => o.status === orderTab.toLowerCase()).map(order => (
+              {ordersData.filter(o => o.status === tabToStatusKey(orderTab)).map(order => (
                 <div className="full-order-card" key={order.id}>
                   <div className="full-order-content">
                     <div className="f-o-header">
@@ -889,7 +922,7 @@ const RestaurantDashboard = () => {
                     <p className="f-o-meta">{order.itemCount} items &nbsp;&nbsp; <strong>₹{order.price}</strong> &nbsp;&nbsp; <span style={{color: 'var(--ph-text-muted)'}}>{order.time}</span></p>
                   </div>
                   <div className="f-o-actions" style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
-                    {order.status === 'ready' && (
+                    {(order.status === 'ready' || order.status === 'picked_up' || order.status === 'out_for_delivery') && (
                       <button 
                         className="btn-outline" 
                         style={{padding: '8px 12px', fontSize: '0.85rem'}}
@@ -904,7 +937,7 @@ const RestaurantDashboard = () => {
                   </div>
                 </div>
               ))}
-              {ordersData.filter(o => o.status === orderTab.toLowerCase()).length === 0 && (
+              {ordersData.filter(o => o.status === tabToStatusKey(orderTab)).length === 0 && (
                 <div className="empty-state-simple" style={{height: '200px'}}>
                   <p>No orders in this status.</p>
                 </div>
@@ -1026,7 +1059,7 @@ const RestaurantDashboard = () => {
                 <span className="rev-s-val text-green">₹{revenueStats.gross}</span>
               </div>
               <div className="rev-stat-card bg-red-light">
-                <span className="rev-s-label">Platform Commission (18%)</span>
+                <span className="rev-s-label">Platform Commission (10%)</span>
                 <span className="rev-s-val text-red">₹{revenueStats.commission}</span>
               </div>
               <div className="rev-stat-card bg-orange-light">
@@ -1077,28 +1110,34 @@ const RestaurantDashboard = () => {
             <header className="view-header with-action">
               <div className="header-titles">
                 <h1>Notifications</h1>
-                <p>1 unread notification</p>
+                <p>{unreadCount} unread {unreadCount === 1 ? 'notification' : 'notifications'}</p>
               </div>
-              <button className="btn-outline">
+              <button className="btn-outline" onClick={markAllAsRead}>
                 Mark all read
               </button>
             </header>
 
             <div className="notif-list">
-              {notificationsData.map(notif => (
-                <div className={`notif-card ${notif.unread ? 'unread' : ''}`} key={notif.id}>
-                  <div className={`notif-icon-box ${notif.iconColor}`}>
+              {notifications.map(notif => (
+                <div 
+                  className={`notif-card ${!notif.is_read ? 'unread' : ''}`} 
+                  key={notif.id}
+                  onClick={() => { if(!notif.is_read) markAsRead(notif.id); }}
+                  style={{ cursor: !notif.is_read ? 'pointer' : 'default' }}
+                >
+                  <div className={`notif-icon-box ${notif.type || 'info'}`}>
                     {notif.type === 'order' && <Package size={16} />}
                     {notif.type === 'alert' && <AlertTriangle size={16} />}
                     {notif.type === 'success' && <CheckCircle2 size={16} />}
                     {notif.type === 'info' && <Info size={16} />}
+                    {(!notif.type) && <Info size={16} />}
                   </div>
                   <div className="notif-content">
                     <h4 className="notif-title">{notif.title}</h4>
-                    <p className="notif-desc">{notif.desc}</p>
-                    <span className="notif-time">{notif.time}</span>
+                    <p className="notif-desc">{notif.message}</p>
+                    <span className="notif-time">{new Date(notif.created_at).toLocaleString()}</span>
                   </div>
-                  {notif.unread && <div className="notif-dot"></div>}
+                  {!notif.is_read && <div className="notif-dot"></div>}
                 </div>
               ))}
             </div>
@@ -1465,7 +1504,7 @@ const RestaurantDashboard = () => {
                 </div>
               </div>
 
-              {selectedOrder.pickup_otp && (selectedOrder.status === 'ready' || selectedOrder.status === 'driver_assigned' || selectedOrder.status === 'ready_for_pickup') && (
+              {selectedOrder.pickup_otp && (selectedOrder.status === 'ready' || selectedOrder.status === 'picked_up') && (
                 <div style={{
                   background: '#fff7ed', 
                   border: '1px dashed #f97316', 
@@ -1476,6 +1515,49 @@ const RestaurantDashboard = () => {
                 }}>
                   <span style={{fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px', fontWeight: '500'}}>PICKUP OTP (Give to Delivery Boy)</span>
                   <strong style={{fontSize: '1.5rem', color: '#f97316', letterSpacing: '3px'}}>{selectedOrder.pickup_otp}</strong>
+                </div>
+              )}
+
+              {/* Status-specific banners */}
+              {selectedOrder.status === 'picked_up' && (
+                <div style={{
+                  background: '#eff6ff',
+                  border: '1px solid #3b82f6',
+                  padding: '14px',
+                  borderRadius: '8px',
+                  marginBottom: '20px',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  justifyContent: 'center'
+                }}>
+                  <span style={{fontSize: '1.3rem'}}>🚗</span>
+                  <div>
+                    <strong style={{color: '#1d4ed8', fontSize: '0.95rem'}}>Driver Assigned</strong>
+                    <p style={{margin: '2px 0 0', color: '#64748b', fontSize: '0.85rem'}}>A delivery partner has been assigned and is heading to your restaurant.</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedOrder.status === 'out_for_delivery' && (
+                <div style={{
+                  background: '#f0fdf4',
+                  border: '1px solid #22c55e',
+                  padding: '14px',
+                  borderRadius: '8px',
+                  marginBottom: '20px',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  justifyContent: 'center'
+                }}>
+                  <span style={{fontSize: '1.3rem', animation: 'pulse 1.5s infinite'}}>🏍️</span>
+                  <div>
+                    <strong style={{color: '#16a34a', fontSize: '0.95rem'}}>Out for Delivery</strong>
+                    <p style={{margin: '2px 0 0', color: '#64748b', fontSize: '0.85rem'}}>The driver has picked up the food and is on the way to the customer.</p>
+                  </div>
                 </div>
               )}
 
@@ -1513,7 +1595,15 @@ const RestaurantDashboard = () => {
                 <button type="button" className="btn-primary" style={{width: '100%', justifyContent: 'center'}} onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'ready')}>Mark as Ready</button>
               )}
               {selectedOrder.status === 'ready' && (
-                <button type="button" className="btn-primary" style={{width: '100%', justifyContent: 'center'}} onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'delivered')}>Mark as Delivered</button>
+                <div style={{width: '100%', textAlign: 'center', color: 'var(--ph-text-muted)', fontSize: '0.9rem', padding: '8px 0'}}>
+                  ⏳ Waiting for a delivery partner to pick up this order...
+                </div>
+              )}
+              {selectedOrder.status === 'picked_up' && (
+                <button type="button" className="btn-outline" style={{width: '100%', justifyContent: 'center'}} onClick={() => setTrackingOrder(selectedOrder)}>🗺️ Track Driver</button>
+              )}
+              {selectedOrder.status === 'out_for_delivery' && (
+                <button type="button" className="btn-outline" style={{width: '100%', justifyContent: 'center'}} onClick={() => setTrackingOrder(selectedOrder)}>🗺️ Track Delivery</button>
               )}
               {selectedOrder.status === 'delivered' && (
                 <button type="button" className="btn-cancel" style={{width: '100%', justifyContent: 'center'}} onClick={() => setSelectedOrder(null)}>Close</button>

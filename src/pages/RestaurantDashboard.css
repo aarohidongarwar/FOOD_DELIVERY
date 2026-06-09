@@ -700,6 +700,26 @@ input:checked + .slider:before {
   color: #a855f7;
 }
 
+.r-order-badge.ready {
+  background-color: #fff7ed;
+  color: #f97316;
+}
+
+.r-order-badge.picked_up {
+  background-color: #eff6ff;
+  color: #3b82f6;
+}
+
+.r-order-badge.out_for_delivery {
+  background-color: #f0fdf4;
+  color: #16a34a;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 /* Products Grid */
 .products-grid {
   display: grid;
@@ -981,6 +1001,7 @@ input:checked + .slider:before {
 /* Orders View */
 .order-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 24px;
 }

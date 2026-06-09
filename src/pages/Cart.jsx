@@ -28,6 +28,7 @@ export default function Cart() {
 
   const [address, setAddress] = useState(getFormattedAddress() || user?.address || '');
   const [saveToProfile, setSaveToProfile] = useState(!user?.address);
+  const [showPaymentGateway, setShowPaymentGateway] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [instructions, setInstructions] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -128,7 +129,7 @@ export default function Cart() {
   const walletDeduction = useWallet ? Math.min(walletBalance, finalTotal) : 0;
   const toPay = finalTotal - walletDeduction;
 
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = () => {
     if (!isAuthenticated()) {
       navigate('/login', { state: { returnTo: '/cart' } });
       return;
@@ -139,6 +140,10 @@ export default function Cart() {
       return;
     }
 
+    executeOrder();
+  };
+
+  const executeOrder = async () => {
     setIsSubmitting(true);
     setError('');
 
@@ -157,6 +162,7 @@ export default function Cart() {
       };
 
       const newOrder = await placeOrder(orderData);
+      setShowPaymentGateway(false);
       clearCart();
       setShowSuccess(true);
       setTimeout(() => {
@@ -213,9 +219,21 @@ export default function Cart() {
 
           {/* Payment Section */}
           <section className="cp-section">
-            <div className="cp-section-header">
+            <div className="cp-section-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CreditCard size={20} className="text-primary" />
-              <h2>Payment Method</h2>
+              <h2 style={{ margin: 0 }}>Payment Method</h2>
+              <span style={{ 
+                backgroundColor: 'rgba(239, 68, 68, 0.15)', 
+                color: '#ef4444', 
+                fontSize: '10px', 
+                fontWeight: 'bold', 
+                padding: '2px 6px', 
+                borderRadius: '4px',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                letterSpacing: '0.5px'
+              }}>
+                TEST MODE
+              </span>
             </div>
 
             {isAuthenticated() && (
@@ -250,27 +268,65 @@ export default function Cart() {
             <div className="cp-payment-methods">
               {toPay > 0 ? (
                 <>
-                  <label className={`cp-payment-card ${paymentMethod === 'card' ? 'active' : ''}`}>
-                    <input type="radio" name="payment" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} />
-                    <div className="cp-payment-info">
-                      <span className="cp-payment-title">Credit / Debit Card</span>
-                      <span className="cp-payment-desc">Pay securely with your card</span>
-                    </div>
-                  </label>
-                  <label className={`cp-payment-card ${paymentMethod === 'upi' ? 'active' : ''}`}>
-                    <input type="radio" name="payment" checked={paymentMethod === 'upi'} onChange={() => setPaymentMethod('upi')} />
-                    <div className="cp-payment-info">
-                      <span className="cp-payment-title">UPI</span>
-                      <span className="cp-payment-desc">Google Pay, PhonePe, Paytm</span>
-                    </div>
-                  </label>
-                  <label className={`cp-payment-card ${paymentMethod === 'cod' ? 'active' : ''}`}>
-                    <input type="radio" name="payment" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} />
-                    <div className="cp-payment-info">
-                      <span className="cp-payment-title">Cash on Delivery</span>
-                      <span className="cp-payment-desc">Pay when your food arrives</span>
-                    </div>
-                  </label>
+                  <div className={`cp-payment-method-container ${paymentMethod === 'card' ? 'active-container' : ''}`}>
+                    <label className={`cp-payment-card ${paymentMethod === 'card' ? 'active' : ''}`} style={{marginBottom: paymentMethod === 'card' ? '0' : '12px', borderBottomLeftRadius: paymentMethod === 'card' ? '0' : '8px', borderBottomRightRadius: paymentMethod === 'card' ? '0' : '8px'}}>
+                      <input type="radio" name="payment" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} />
+                      <div className="cp-payment-info">
+                        <span className="cp-payment-title">Credit / Debit Card</span>
+                        <span className="cp-payment-desc">Pay securely with your card</span>
+                      </div>
+                    </label>
+                    {paymentMethod === 'card' && (
+                      <div className="cp-payment-inline-content" style={{padding: '16px', border: '1px solid var(--primary)', borderTop: 'none', borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', marginBottom: '12px', backgroundColor: 'rgba(249, 115, 22, 0.03)'}}>
+                        <div style={{marginBottom: '12px'}}>
+                          <label style={{display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#475569'}}>Card Number</label>
+                          <input type="text" placeholder="4567 8901 2345 6789" style={{width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', boxSizing: 'border-box'}} />
+                        </div>
+                        <div style={{display: 'flex', gap: '12px'}}>
+                          <div style={{flex: 1}}>
+                            <label style={{display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#475569'}}>Expiry</label>
+                            <input type="text" placeholder="MM/YY" style={{width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', boxSizing: 'border-box'}} />
+                          </div>
+                          <div style={{flex: 1}}>
+                            <label style={{display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#475569'}}>CVV</label>
+                            <input type="password" placeholder="***" style={{width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', boxSizing: 'border-box'}} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={`cp-payment-method-container ${paymentMethod === 'upi' ? 'active-container' : ''}`}>
+                    <label className={`cp-payment-card ${paymentMethod === 'upi' ? 'active' : ''}`} style={{marginBottom: paymentMethod === 'upi' ? '0' : '12px', borderBottomLeftRadius: paymentMethod === 'upi' ? '0' : '8px', borderBottomRightRadius: paymentMethod === 'upi' ? '0' : '8px'}}>
+                      <input type="radio" name="payment" checked={paymentMethod === 'upi'} onChange={() => setPaymentMethod('upi')} />
+                      <div className="cp-payment-info">
+                        <span className="cp-payment-title">UPI</span>
+                        <span className="cp-payment-desc">Google Pay, PhonePe, Paytm</span>
+                      </div>
+                    </label>
+                    {paymentMethod === 'upi' && (
+                      <div className="cp-payment-inline-content" style={{padding: '20px', border: '1px solid var(--primary)', borderTop: 'none', borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', marginBottom: '12px', backgroundColor: 'rgba(249, 115, 22, 0.03)', textAlign: 'center'}}>
+                        <div style={{background: '#ffffff', padding: '12px', borderRadius: '8px', display: 'inline-block', marginBottom: '12px', border: '1px solid #e2e8f0'}}>
+                          <img 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`upi://pay?pa=quickbite@upi&pn=QuickBite&am=${toPay.toFixed(2)}`)}`} 
+                            alt="UPI QR Code" 
+                            style={{display: 'block', margin: '0 auto'}}
+                          />
+                        </div>
+                        <p style={{fontSize: '0.9rem', color: '#475569', margin: 0}}>Scan with any UPI app to pay <strong>₹{toPay.toFixed(2)}</strong></p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={`cp-payment-method-container ${paymentMethod === 'cod' ? 'active-container' : ''}`}>
+                    <label className={`cp-payment-card ${paymentMethod === 'cod' ? 'active' : ''}`} style={{marginBottom: '12px'}}>
+                      <input type="radio" name="payment" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} />
+                      <div className="cp-payment-info">
+                        <span className="cp-payment-title">Cash on Delivery</span>
+                        <span className="cp-payment-desc">Pay when your food arrives</span>
+                      </div>
+                    </label>
+                  </div>
                 </>
               ) : (
                 <div className="cp-payment-wallet-only text-green">
@@ -388,7 +444,7 @@ export default function Cart() {
               onClick={handlePlaceOrder}
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Processing...' : 'Place Order'}
+              {isSubmitting ? 'Processing...' : (paymentMethod === 'cod' || toPay === 0 ? 'Place Order' : `Pay ₹${toPay.toFixed(2)} & Place Order`)}
               {!isSubmitting && <ChevronRight size={18} />}
             </button>
           </div>

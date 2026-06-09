@@ -2,8 +2,20 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../db.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { validateMenuItem } from '../middleware/validate.js';
 
 const router = express.Router();
+
+const checkDirectRestaurantOwnership = async (restaurantId, userId) => {
+  const [restOwner] = await db.execute('SELECT owner_id FROM restaurants WHERE id = ?', [restaurantId]);
+  return restOwner[0] && restOwner[0].owner_id === userId;
+};
+
+const checkMenuItemOwnership = async (menuItemId, userId) => {
+  const [menuItem] = await db.execute('SELECT restaurant_id FROM menu_items WHERE id = ?', [menuItemId]);
+  if (!menuItem[0]) return false;
+  return checkDirectRestaurantOwnership(menuItem[0].restaurant_id, userId);
+};
 
 // Get menu items for a restaurant
 router.get('/restaurant/:restaurantId', async (req, res) => {
@@ -16,9 +28,15 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
 });
 
 // Add menu item (restaurant owner)
-router.post('/', authenticateToken, requireRole('restaurant', 'admin'), async (req, res) => {
+router.post('/', authenticateToken, requireRole('restaurant', 'admin'), validateMenuItem, async (req, res) => {
   try {
     const { restaurant_id, name, description, price, image_url, category, is_veg, is_bestseller } = req.body;
+    
+    if (req.user.role !== 'admin') {
+      const isOwner = await checkDirectRestaurantOwnership(restaurant_id, req.user.id);
+      if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+    }
+    
     const id = uuidv4();
     
     await db.execute(
@@ -36,8 +54,13 @@ router.post('/', authenticateToken, requireRole('restaurant', 'admin'), async (r
 });
 
 // Update menu item
-router.put('/:id', authenticateToken, requireRole('restaurant', 'admin'), async (req, res) => {
+router.put('/:id', authenticateToken, requireRole('restaurant', 'admin'), validateMenuItem, async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      const isOwner = await checkMenuItemOwnership(req.params.id, req.user.id);
+      if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+    }
+    
     const { name, description, price, image_url, category, is_veg, is_available, is_bestseller } = req.body;
     
     await db.execute(
@@ -68,6 +91,11 @@ router.put('/:id', authenticateToken, requireRole('restaurant', 'admin'), async 
 // Delete menu item
 router.delete('/:id', authenticateToken, requireRole('restaurant', 'admin'), async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      const isOwner = await checkMenuItemOwnership(req.params.id, req.user.id);
+      if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+    }
+    
     await db.execute('DELETE FROM menu_items WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) {

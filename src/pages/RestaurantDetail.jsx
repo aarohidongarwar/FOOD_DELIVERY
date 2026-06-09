@@ -63,6 +63,7 @@ export default function RestaurantDetail({ onCartClick }) {
   if (loading || !currentRestaurant) return <LoadingSpinner fullScreen />;
 
   const { name, cuisine_type, rating, total_ratings, delivery_time, delivery_fee, address, image_url, menu, reviews = [] } = currentRestaurant;
+  const numericRating = Number(rating) || 0;
   
   const filteredMenu = {};
   if (searchQuery) {
@@ -88,10 +89,10 @@ export default function RestaurantDetail({ onCartClick }) {
             <p className="rd-address"><MapPin size={14} /> {address}</p>
             
             <div className="rd-meta">
-              {rating > 0 && (
+              {numericRating > 0 && (
                 <div className="rd-rating">
                   <Star size={14} fill="white" />
-                  <span>{rating.toFixed(1)}</span>
+                  <span>{numericRating.toFixed(1)}</span>
                   <span className="rd-rating-count">({total_ratings}+ ratings)</span>
                 </div>
               )}
@@ -181,10 +182,10 @@ export default function RestaurantDetail({ onCartClick }) {
             <div className="rd-main rd-reviews-main">
               <div className="rd-reviews-summary">
                 <div className="rd-rating-big">
-                  <div className="rd-rating-val">{rating.toFixed(1)}</div>
+                  <div className="rd-rating-val">{numericRating.toFixed(1)}</div>
                   <div className="rd-rating-stars">
                     {[1,2,3,4,5].map(s => (
-                      <Star key={s} size={16} fill={s <= Math.round(rating) ? "var(--primary)" : "none"} stroke={s <= Math.round(rating) ? "var(--primary)" : "var(--text-muted)"} />
+                      <Star key={s} size={16} fill={s <= Math.round(numericRating) ? "var(--primary)" : "none"} stroke={s <= Math.round(numericRating) ? "var(--primary)" : "var(--text-muted)"} />
                     ))}
                   </div>
                   <div className="rd-rating-count">{total_ratings} ratings</div>
