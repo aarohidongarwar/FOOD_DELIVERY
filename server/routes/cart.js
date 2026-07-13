@@ -25,12 +25,12 @@ router.get('/', authenticateToken, async (req, res) => {
 // Add to cart
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { restaurant_id, menu_item_id, quantity = 1 } = req.body;
+    const { restaurant_id, menu_item_id, quantity = 1, cart_type = 'food' } = req.body;
     
     // Check if cart has items from a different restaurant
-    const [existing] = await db.execute('SELECT restaurant_id FROM cart_items WHERE user_id = ? LIMIT 1', [req.user.id]);
+    const [existing] = await db.execute('SELECT restaurant_id FROM cart_items WHERE user_id = ? AND cart_type = ? LIMIT 1', [req.user.id, cart_type]);
     if (existing.length > 0 && existing[0].restaurant_id !== restaurant_id) {
-      return res.status(400).json({ error: 'Cart contains items from another restaurant. Clear cart first.', code: 'DIFFERENT_RESTAURANT' });
+      return res.status(400).json({ error: `Cart contains items from another store. Clear cart first.`, code: 'DIFFERENT_RESTAURANT' });
     }
 
     const [existingItem] = await db.execute('SELECT * FROM cart_items WHERE user_id = ? AND menu_item_id = ?', [req.user.id, menu_item_id]);
@@ -39,8 +39,8 @@ router.post('/', authenticateToken, async (req, res) => {
       await db.execute('UPDATE cart_items SET quantity = quantity + ? WHERE id = ?', [quantity, existingItem[0].id]);
     } else {
       await db.execute(
-        'INSERT INTO cart_items (id, user_id, restaurant_id, menu_item_id, quantity) VALUES (?, ?, ?, ?, ?)',
-        [uuidv4(), req.user.id, restaurant_id, menu_item_id, quantity]
+        'INSERT INTO cart_items (id, user_id, restaurant_id, menu_item_id, quantity, cart_type) VALUES (?, ?, ?, ?, ?, ?)',
+        [uuidv4(), req.user.id, restaurant_id, menu_item_id, quantity, cart_type]
       );
     }
     
@@ -79,7 +79,12 @@ router.delete('/:menuItemId', authenticateToken, async (req, res) => {
 // Clear cart
 router.delete('/', authenticateToken, async (req, res) => {
   try {
-    await db.execute('DELETE FROM cart_items WHERE user_id = ?', [req.user.id]);
+    const cart_type = req.query.cart_type;
+    if (cart_type) {
+      await db.execute('DELETE FROM cart_items WHERE user_id = ? AND cart_type = ?', [req.user.id, cart_type]);
+    } else {
+      await db.execute('DELETE FROM cart_items WHERE user_id = ?', [req.user.id]);
+    }
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to clear cart' });

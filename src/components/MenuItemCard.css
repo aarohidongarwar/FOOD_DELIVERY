@@ -136,9 +136,40 @@
   color: white;
 }
 
+@media (max-width: 640px) {
+  .menu-item-card {
+    gap: 14px;
+    padding: 16px 0;
+  }
+
+  .mic-name {
+    font-size: 0.938rem;
+  }
+
+  .mic-desc {
+    font-size: 0.75rem;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+
+  .mic-add-btn {
+    padding: 6px 18px;
+    font-size: 0.75rem;
+  }
+}
+
 @media (max-width: 480px) {
   .mic-image-wrap {
     width: 90px;
     height: 78px;
+  }
+
+  .mic-add-btn {
+    padding: 6px 14px;
+  }
+
+  .mic-qty-btn {
+    width: 28px;
+    height: 30px;
   }
 }

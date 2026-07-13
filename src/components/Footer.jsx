@@ -28,6 +28,7 @@ export default function Footer() {
               <li><Link to="/restaurants">Restaurants</Link></li>
               <li><Link to="/orders">My Orders</Link></li>
               <li><Link to="/profile">Profile</Link></li>
+              <li><Link to="/login?role=admin">Admin Portal</Link></li>
             </ul>
           </div>
 

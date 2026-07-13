@@ -29,7 +29,7 @@ CREATE TABLE users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     phone VARCHAR(20),
-    role ENUM('customer', 'restaurant', 'driver', 'admin') DEFAULT 'customer',
+    role ENUM('customer', 'restaurant', 'driver', 'admin', 'grocery') DEFAULT 'customer',
     avatar_url VARCHAR(255),
     address TEXT,
     lat DECIMAL(10,8),
@@ -307,6 +307,7 @@ CREATE TABLE cart_items (
     restaurant_id VARCHAR(36) NOT NULL,
     menu_item_id VARCHAR(36) NOT NULL,
     quantity INT DEFAULT 1,
+    cart_type ENUM('food', 'grocery') DEFAULT 'food',
     customizations_json TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE,
@@ -333,11 +334,12 @@ CREATE TABLE promo_codes (
 -- 21. settlements
 CREATE TABLE settlements (
     id VARCHAR(36) PRIMARY KEY,
-    user_id VARCHAR(36) NOT NULL,
+    entity_type ENUM('restaurant', 'driver') NOT NULL,
+    entity_id VARCHAR(36) NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
     status ENUM('pending', 'completed') DEFAULT 'pending',
+    transaction_ref VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    paid_at TIMESTAMP NULL DEFAULT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 

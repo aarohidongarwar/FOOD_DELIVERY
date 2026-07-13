@@ -647,3 +647,402 @@
     max-height: 90vh;
   }
 }
+
+/* ══════════════════════════════════════════════
+   Finance & Settlement Page — Enhanced Styles
+   ══════════════════════════════════════════════ */
+
+/* ─── Finance Sub-Tab Navigation ─── */
+.finance-sub-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 28px;
+  width: fit-content;
+  box-shadow: var(--shadow-xs);
+}
+
+.finance-sub-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  background: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.finance-sub-tab:hover {
+  background: rgba(255, 87, 34, 0.06);
+  color: var(--primary);
+}
+
+.finance-sub-tab.active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(255, 87, 34, 0.3);
+}
+
+.finance-sub-tab.active svg {
+  color: #fff;
+}
+
+.finance-tab-content {
+  animation: fadeSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Money Flow Visualization ─── */
+.money-flow-visual {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.flow-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+  gap: 10px;
+}
+
+.flow-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.flow-icon:hover {
+  transform: scale(1.1);
+}
+
+.flow-icon.customer {
+  background: linear-gradient(135deg, #3B82F6, #2563EB);
+}
+
+.flow-icon.platform {
+  background: linear-gradient(135deg, #F97316, #EA580C);
+}
+
+.flow-icon.restaurant {
+  background: linear-gradient(135deg, #10B981, #059669);
+}
+
+.flow-icon.driver {
+  background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+}
+
+.flow-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.flow-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.flow-arrow {
+  color: var(--text-muted);
+  opacity: 0.4;
+  flex-shrink: 0;
+  margin-top: -30px;
+}
+
+/* ─── Finance Info Box ─── */
+.finance-info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 22px;
+  background: linear-gradient(135deg, #EFF6FF, #F0F9FF);
+  border: 1px solid #BFDBFE;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  font-size: 0.875rem;
+  color: #1E40AF;
+  line-height: 1.6;
+}
+
+.finance-info-box svg {
+  color: #3B82F6;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.finance-info-box strong {
+  color: #1E3A8A;
+}
+
+/* ─── Balance Badges ─── */
+.balance-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.balance-badge.positive {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.balance-badge.negative {
+  background: rgba(239, 68, 68, 0.1);
+  color: #DC2626;
+}
+
+.balance-badge.settled {
+  background: rgba(16, 185, 129, 0.08);
+  color: #10B981;
+  font-weight: 500;
+}
+
+/* ─── Type Badges ─── */
+.type-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.type-badge.deposit {
+  background: rgba(239, 68, 68, 0.1);
+  color: #DC2626;
+}
+
+.type-badge.payout {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.badge-pending {
+  display: inline-block;
+  background: rgba(245, 158, 11, 0.15);
+  color: #B45309;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* ─── Pie Chart Legend ─── */
+.pie-legend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+.pie-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.875rem;
+}
+
+.pie-legend-row .legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.pie-legend-row .legend-name {
+  flex: 1;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.pie-legend-row .legend-val {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+}
+
+/* ─── Settlement Summary ─── */
+.settlement-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.summary-row.separator {
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 0;
+  margin: 2px 0;
+}
+
+.summary-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.summary-value {
+  font-weight: 700;
+  font-size: 1rem;
+  font-family: var(--font-display);
+}
+
+/* ─── Payout Modal ─── */
+.payout-modal-summary {
+  margin-bottom: 24px;
+}
+
+.payout-entity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--bg);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-light);
+}
+
+.payout-entity-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.payout-entity-icon.restaurant {
+  background: linear-gradient(135deg, #10B981, #059669);
+}
+
+.payout-entity-icon.driver {
+  background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+}
+
+.payout-entity-name {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.payout-entity-role {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.payout-amount-display {
+  text-align: center;
+  padding: 20px;
+  background: var(--bg);
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+}
+
+.payout-amount-label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.payout-amount-value {
+  font-size: 2.25rem;
+  font-weight: 800;
+  font-family: var(--font-display);
+  line-height: 1;
+}
+
+.payout-amount-value.green {
+  color: #10B981;
+}
+
+.payout-amount-value.red {
+  color: #EF4444;
+}
+
+/* ─── Responsive Overrides ─── */
+@media (max-width: 1024px) {
+  .money-flow-visual {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .flow-arrow {
+    display: none;
+  }
+
+  .flow-step {
+    min-width: 120px;
+  }
+}
+
+@media (max-width: 768px) {
+  .finance-sub-tabs {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .finance-sub-tab {
+    padding: 8px 14px;
+    font-size: 0.813rem;
+  }
+  
+  .finance-sub-tab span {
+    display: none;
+  }
+
+  .money-flow-visual {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .flow-arrow {
+    display: block;
+    transform: rotate(90deg);
+    margin: 0;
+  }
+}

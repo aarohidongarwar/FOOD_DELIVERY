@@ -22,10 +22,12 @@ export const validateOrderPlacement = (req, res, next) => {
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'items array is required and cannot be empty' });
   }
-  if (delivery_lat !== undefined && isNaN(parseFloat(delivery_lat))) {
+  const lat = parseFloat(delivery_lat);
+  if (delivery_lat && delivery_lat !== 'null' && isNaN(lat)) {
     return res.status(400).json({ error: 'delivery_lat must be a valid number' });
   }
-  if (delivery_lon !== undefined && isNaN(parseFloat(delivery_lon))) {
+  const lon = parseFloat(delivery_lon);
+  if (delivery_lon && delivery_lon !== 'null' && isNaN(lon)) {
     return res.status(400).json({ error: 'delivery_lon must be a valid number' });
   }
   next();

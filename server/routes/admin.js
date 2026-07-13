@@ -142,17 +142,58 @@ router.put('/orders/:id/status', authenticateToken, requireRole('admin'), async 
     const valid = ['pending','confirmed','preparing','out_for_delivery','delivered','cancelled'];
     if (!valid.includes(status)) return res.status(400).json({ error: 'Invalid status' });
     
-    await db.execute("UPDATE orders SET status=?, updated_at=NOW() WHERE id=?", [status, req.params.id]);
-    
+    // Fetch order details before updating (needed for refund/payment logic)
+    const [preOrderRows] = await db.execute('SELECT user_id, payment_method, payment_status FROM orders WHERE id=?', [req.params.id]);
+    const preOrder = preOrderRows[0];
+
     if (status === 'delivered') {
+      // Mark order delivered and payment as paid
+      await db.execute("UPDATE orders SET status='delivered', payment_status='paid', delivered_at=NOW(), updated_at=NOW() WHERE id=?", [req.params.id]);
+      
+      if (preOrder?.payment_method === 'COD') {
+        await db.execute(
+          "UPDATE payments SET status='completed', transaction_id=? WHERE order_id=? AND status='pending'",
+          [`COD_ADMIN_${Date.now()}`, req.params.id]
+        );
+      }
+
       const [oRows] = await db.execute('SELECT driver_id FROM orders WHERE id=?', [req.params.id]);
       const o = oRows[0];
       if (o?.driver_id) {
         await db.execute("UPDATE delivery_agents SET status='available', total_deliveries=total_deliveries+1 WHERE user_id=?", [o.driver_id]);
       }
-    }
-    if (status === 'cancelled') {
+    } else if (status === 'cancelled') {
+      await db.execute("UPDATE orders SET status='cancelled', payment_status='failed', cancelled_at=NOW(), updated_at=NOW() WHERE id=?", [req.params.id]);
       await db.execute("UPDATE payments SET status='refunded' WHERE order_id=?", [req.params.id]);
+
+      // Refund wallet deduction if customer used wallet
+      if (preOrder) {
+        const [wallets] = await db.execute('SELECT * FROM wallets WHERE user_id=?', [preOrder.user_id]);
+        const wallet = wallets[0];
+        if (wallet) {
+          const [walletDebits] = await db.execute(
+            "SELECT * FROM wallet_transactions WHERE wallet_id=? AND related_order_id=? AND type='debit'",
+            [wallet.id, req.params.id]
+          );
+          if (walletDebits.length > 0) {
+            const debitAmount = parseFloat(walletDebits[0].amount);
+            const newBalance = parseFloat(wallet.balance) + debitAmount;
+            await db.execute('UPDATE wallets SET balance=? WHERE id=?', [newBalance, wallet.id]);
+            await db.execute(
+              "INSERT INTO wallet_transactions (id, wallet_id, type, amount, description, related_order_id) VALUES (?, ?, 'credit', ?, ?, ?)",
+              [uuidv4(), wallet.id, debitAmount, `Refund for cancelled order ${req.params.id.substring(0, 8)}`, req.params.id]
+            );
+          }
+        }
+      }
+
+      // Release driver
+      const [oRows] = await db.execute('SELECT driver_id FROM orders WHERE id=?', [req.params.id]);
+      if (oRows[0]?.driver_id) {
+        await db.execute("UPDATE delivery_agents SET status='available' WHERE user_id=?", [oRows[0].driver_id]);
+      }
+    } else {
+      await db.execute("UPDATE orders SET status=?, updated_at=NOW() WHERE id=?", [status, req.params.id]);
     }
     
     const [orderRows] = await db.execute(`
@@ -195,15 +236,44 @@ router.put('/orders/:id/reassign', authenticateToken, requireRole('admin'), asyn
 // Cancel/Refund order
 router.post('/orders/:id/cancel', authenticateToken, requireRole('admin'), async (req, res) => {
   try {
-    await db.execute("UPDATE orders SET status='cancelled', updated_at=NOW() WHERE id=?", [req.params.id]);
+    // Fetch order details before cancelling (needed for wallet refund)
+    const [orderDetailRows] = await db.execute('SELECT user_id, grand_total, payment_status FROM orders WHERE id=?', [req.params.id]);
+    const orderDetail = orderDetailRows[0];
+
+    await db.execute("UPDATE orders SET status='cancelled', payment_status='failed', cancelled_at=NOW(), updated_at=NOW() WHERE id=?", [req.params.id]);
     await db.execute("UPDATE payments SET status='refunded' WHERE order_id=?", [req.params.id]);
+    
+    // Release driver if assigned
     const [orderRows] = await db.execute('SELECT driver_id FROM orders WHERE id=?', [req.params.id]);
     const o = orderRows[0];
     if (o?.driver_id) {
       await db.execute("UPDATE delivery_agents SET status='available' WHERE user_id=?", [o.driver_id]);
     }
+
+    // Refund wallet deduction if customer used wallet for this order
+    if (orderDetail) {
+      const [wallets] = await db.execute('SELECT * FROM wallets WHERE user_id=?', [orderDetail.user_id]);
+      const wallet = wallets[0];
+      if (wallet) {
+        const [walletDebits] = await db.execute(
+          "SELECT * FROM wallet_transactions WHERE wallet_id=? AND related_order_id=? AND type='debit'",
+          [wallet.id, req.params.id]
+        );
+        if (walletDebits.length > 0) {
+          const debitAmount = parseFloat(walletDebits[0].amount);
+          const newBalance = parseFloat(wallet.balance) + debitAmount;
+          await db.execute('UPDATE wallets SET balance=? WHERE id=?', [newBalance, wallet.id]);
+          await db.execute(
+            "INSERT INTO wallet_transactions (id, wallet_id, type, amount, description, related_order_id) VALUES (?, ?, 'credit', ?, ?, ?)",
+            [uuidv4(), wallet.id, debitAmount, `Refund for admin-cancelled order ${req.params.id.substring(0, 8)}`, req.params.id]
+          );
+        }
+      }
+    }
+
     res.json({ success: true });
   } catch (err) { 
+    console.error('Admin cancel order error:', err);
     res.status(500).json({ error: 'Failed' }); 
   }
 });
@@ -402,6 +472,14 @@ router.get('/finance/overview', authenticateToken, requireRole('admin'), async (
     const [totalDeliveryFeesRows] = await db.execute("SELECT COALESCE(SUM(delivery_fee),0) as total FROM orders WHERE status='delivered'");
     const [totalRefundsRows] = await db.execute("SELECT COALESCE(SUM(amount),0) as total FROM payments WHERE status='refunded'");
     
+    // Commission & Restaurant Earnings aggregates
+    const [totalCommissionRows] = await db.execute("SELECT COALESCE(SUM(commission_amount),0) as total FROM orders WHERE status='delivered'");
+    const [totalRestEarningsRows] = await db.execute("SELECT COALESCE(SUM(restaurant_earnings),0) as total FROM orders WHERE status='delivered'");
+    const [totalSettledRestRows] = await db.execute("SELECT COALESCE(SUM(amount),0) as total FROM settlements WHERE entity_type='restaurant' AND status='completed'");
+    const [driverPayoutsTotal] = await db.execute("SELECT COALESCE(SUM(amount),0) as total FROM settlements WHERE entity_type='driver' AND status='completed' AND amount > 0");
+    const [driverDepositsTotal] = await db.execute("SELECT COALESCE(SUM(ABS(amount)),0) as total FROM settlements WHERE entity_type='driver' AND status='completed' AND amount < 0");
+    const [deliveredOrderCount] = await db.execute("SELECT COUNT(*) as count FROM orders WHERE status='delivered'");
+
     const [paymentMethods] = await db.execute(`
       SELECT method, COUNT(*) as count, COALESCE(SUM(amount),0) as total
       FROM payments 
@@ -417,14 +495,15 @@ router.get('/finance/overview', authenticateToken, requireRole('admin'), async (
       ORDER BY date
     `);
 
-    // Restaurant payouts (total revenue per restaurant minus platform commission = net earnings)
-    // We also need to subtract what has already been settled
+    // Restaurant payouts with per-restaurant commission & gross revenue
     const [restaurantPayouts] = await db.execute(`
       SELECT 
         r.id, 
         r.name, 
-        COALESCE(SUM(o.restaurant_earnings), 0) as total_earnings, 
         COUNT(o.id) as orders,
+        COALESCE(SUM(o.item_total), 0) as gross_revenue,
+        COALESCE(SUM(o.commission_amount), 0) as total_commission,
+        COALESCE(SUM(o.restaurant_earnings), 0) as total_earnings, 
         (SELECT COALESCE(SUM(amount), 0) FROM settlements WHERE entity_type='restaurant' AND entity_id=r.id AND status='completed') as total_settled
       FROM restaurants r 
       LEFT JOIN orders o ON r.id=o.restaurant_id AND o.status='delivered'
@@ -466,6 +545,12 @@ router.get('/finance/overview', authenticateToken, requireRole('admin'), async (
       monthRevenue: parseFloat(monthRevenueRows[0].total) || 0,
       totalDeliveryFees: parseFloat(totalDeliveryFeesRows[0].total) || 0,
       totalRefunds: parseFloat(totalRefundsRows[0].total) || 0,
+      totalCommission: parseFloat(totalCommissionRows[0].total) || 0,
+      totalRestaurantEarnings: parseFloat(totalRestEarningsRows[0].total) || 0,
+      totalSettledToRestaurants: parseFloat(totalSettledRestRows[0].total) || 0,
+      totalSettledToDrivers: parseFloat(driverPayoutsTotal[0].total) || 0,
+      totalDriverDeposits: parseFloat(driverDepositsTotal[0].total) || 0,
+      deliveredOrders: deliveredOrderCount[0].count || 0,
       paymentMethods,
       revenueByDay,
       restaurantPayouts: mappedRestaurantPayouts,

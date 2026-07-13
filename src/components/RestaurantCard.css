@@ -121,3 +121,35 @@
   flex-direction: column;
   gap: 4px;
 }
+
+@media (max-width: 640px) {
+  .rc-body {
+    padding: 12px;
+  }
+
+  .rc-name {
+    font-size: 0.938rem;
+  }
+
+  .rc-meta {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .restaurant-card:hover {
+    transform: none;
+  }
+
+  .rc-delivery-badge {
+    font-size: 0.688rem;
+    padding: 3px 8px;
+  }
+}
+
+/* Touch device: disable hover transform */
+@media (hover: none) {
+  .restaurant-card:hover {
+    transform: none;
+  }
+}

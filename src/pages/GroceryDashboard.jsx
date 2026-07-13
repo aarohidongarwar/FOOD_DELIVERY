@@ -38,7 +38,7 @@ import api from '../api';
 import { fetchOSRMRoute } from '../utils/osrm';
 import useNotificationStore from '../stores/notificationStore';
 import './RestaurantDashboard.css';
-import RestaurantOnboarding from './RestaurantOnboarding';
+import GroceryOnboarding from './GroceryOnboarding';
 
 // Fix Leaflet icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -82,7 +82,7 @@ function MapBoundsUpdater({ bounds }) {
   return null;
 }
 
-const RestaurantDashboard = () => {
+const GroceryDashboard = () => {
   const { user, logout } = useAuthStore();
   const toast = useToastStore();
   const { confirm } = useConfirmStore();
@@ -101,7 +101,6 @@ const RestaurantDashboard = () => {
   const [ordersData, setOrdersData] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [analytics, setAnalytics] = useState(null);
-  const [settlements, setSettlements] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -176,8 +175,29 @@ const RestaurantDashboard = () => {
     }
   }, [trackingOrder, driverLocation?.lat, driverLocation?.lon, restaurant?.latitude, restaurant?.longitude]);
   
+  // Grocery-specific categories (Instamart-style)
+  const groceryProductCategories = [
+    'Fruits & Vegetables', 'Fresh Fruits', 'Fresh Vegetables',
+    'Dairy, Bread & Eggs', 'Milk', 'Curd & Yogurt', 'Paneer & Cheese', 'Bread & Buns',
+    'Meat & Seafood', 'Chicken', 'Mutton', 'Fish & Prawns',
+    'Atta, Rice & Dal', 'Rice', 'Atta & Flour', 'Dal & Pulses',
+    'Masalas & Spices', 'Whole Spices', 'Powdered Spices', 'Ready Masalas',
+    'Oils & Ghee', 'Cooking Oil', 'Ghee & Vanaspati',
+    'Cereals & Breakfast', 'Oats', 'Cornflakes', 'Muesli',
+    'Cold Drinks & Juices', 'Soft Drinks', 'Fruit Juices', 'Water',
+    'Ice Creams & Frozen', 'Ice Cream', 'Frozen Snacks', 'Frozen Vegetables',
+    'Chips & Namkeens', 'Chips', 'Namkeens', 'Popcorn',
+    'Chocolates & Sweets', 'Chocolates', 'Biscuits & Cookies', 'Sweets',
+    'Cleaning Essentials', 'Detergents', 'Dishwash', 'Floor Cleaners',
+    'Personal Care', 'Soaps & Body Wash', 'Shampoo', 'Oral Care',
+    'Baby Care', 'Diapers', 'Baby Food', 'Baby Wipes',
+    'Pet Care', 'Pet Food', 'Pet Accessories',
+    'Dry Fruits & Nuts', 'Tea & Coffee', 'Sugar & Salt', 'Sauces & Spreads',
+    'Noodles & Pasta', 'Canned & Packed Food', 'Pooja Needs',
+  ];
+
   // New Product Form State
-  const [newProduct, setNewProduct] = useState({ name: '', description: '', price: 0, category: 'Main Course', stock: 50, available: true });
+  const [newProduct, setNewProduct] = useState({ name: '', description: '', price: 0, category: 'Fruits & Vegetables', stock: 50, available: true });
 
   // Status mapping: DB values → UI-friendly values
   const dbToUiStatus = (status) => {
@@ -201,7 +221,7 @@ const RestaurantDashboard = () => {
     const map = {
       'Pending': 'pending',
       'Accepted': 'accepted',
-      'Preparing': 'preparing',
+      'Packing': 'preparing',
       'Ready': 'ready',
       'Picked Up': 'picked_up',
       'Out for Delivery': 'out_for_delivery',
@@ -268,12 +288,6 @@ const RestaurantDashboard = () => {
             const { data: analyticsData } = await api.get(`/orders/restaurant/${restData.id}/analytics?days=30`);
             setAnalytics(analyticsData);
           } catch(e) { console.warn('Analytics fetch failed', e); }
-
-          // Fetch settlements
-          try {
-            const { data: settlementsData } = await api.get(`/restaurant/${restData.id}/settlements`);
-            setSettlements(settlementsData);
-          } catch(e) { console.warn('Settlements fetch failed', e); }
         }
       } catch (err) {
         console.error('Failed to fetch dashboard data', err);
@@ -334,15 +348,13 @@ const RestaurantDashboard = () => {
         name: p.name, sold: 0, rev: p.price * 5, percentage: 50
       }));
 
-  const totalSettled = settlements.reduce((sum, s) => sum + (s.status === 'completed' ? parseFloat(s.amount) : 0), 0);
-  const netEarnings = analytics?.summary?.totalRestaurantEarnings ? Math.round(analytics.summary.totalRestaurantEarnings * 100) / 100 : Math.round(totalRevenue * 0.90 * 100) / 100;
-
   const revenueStats = { 
     gross: Math.round(totalRevenue * 100) / 100, 
     commission: analytics?.summary?.totalCommission ? Math.round(analytics.summary.totalCommission * 100) / 100 : Math.round(totalRevenue * 0.10 * 100) / 100, 
-    net: netEarnings, 
-    pending: Math.max(0, Math.round((netEarnings - totalSettled) * 100) / 100)
+    net: analytics?.summary?.totalRestaurantEarnings ? Math.round(analytics.summary.totalRestaurantEarnings * 100) / 100 : Math.round(totalRevenue * 0.90 * 100) / 100, 
+    pending: 0 
   };
+  const settlements = [];
 
   const handleLogout = () => {
     logout();
@@ -429,7 +441,7 @@ const RestaurantDashboard = () => {
       if (newStatus === 'accepted') {
         response = await api.put(`/orders/${orderId}/accept`, { estimated_prep_time: 25 });
       } else if (newStatus === 'cancelled') {
-        response = await api.put(`/orders/${orderId}/reject`, { reason: 'Rejected by restaurant' });
+        response = await api.put(`/orders/${orderId}/reject`, { reason: 'Rejected by store' });
       } else if (newStatus === 'ready') {
         response = await api.put(`/orders/${orderId}/ready`);
       } else {
@@ -493,8 +505,8 @@ const RestaurantDashboard = () => {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'products', label: 'Products', icon: Package },
-    { id: 'inventory', label: 'Inventory', icon: Boxes },
+    { id: 'products', label: 'Grocery Items', icon: Package },
+    { id: 'inventory', label: 'Stock Management', icon: Boxes },
     { id: 'orders', label: 'Orders', icon: ClipboardList },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'revenue', label: 'Revenue', icon: IndianRupee },
@@ -502,7 +514,7 @@ const RestaurantDashboard = () => {
     { id: 'reviews', label: 'Reviews', icon: Star },
   ];
 
-  const orderTabsList = ['Pending', 'Accepted', 'Preparing', 'Ready', 'Picked Up', 'Out for Delivery', 'Delivered', 'Cancelled'];
+  const orderTabsList = ['Pending', 'Accepted', 'Packing', 'Ready', 'Picked Up', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
   const getStockStatus = (stock) => {
     if (stock === 0) return { label: 'Out of Stock', color: 'red', bg: 'var(--ph-red-bg)' };
@@ -527,7 +539,7 @@ const RestaurantDashboard = () => {
 
   if (!restaurant || !restaurant.is_profile_complete) {
     return (
-      <RestaurantOnboarding 
+      <GroceryOnboarding 
         onComplete={async () => {
           setIsLoading(true);
           try {
@@ -586,12 +598,12 @@ const RestaurantDashboard = () => {
       {/* Sidebar */}
       <aside className="partner-sidebar">
         <div className="sidebar-brand">
-          <div className="brand-icon">🏪</div>
-          <h2>Partner Hub</h2>
+          <div className="brand-icon">🛒</div>
+          <h2>Grocery Hub</h2>
         </div>
 
         <div className="partner-profile-card">
-          <div className="partner-name">{restaurant?.name || 'My Restaurant'}</div>
+          <div className="partner-name">{restaurant?.name || 'My Grocery Store'}</div>
           <div className="partner-status" style={{cursor: 'pointer'}} onClick={handleToggleRestaurantOpen}>
             {restaurant?.is_open ? '🟢 OPEN' : '🔴 CLOSED'}
           </div>
@@ -626,7 +638,7 @@ const RestaurantDashboard = () => {
             <header className="view-header">
               <div className="header-titles">
                 <h1>Good morning, {user?.name?.split(' ')[0] || 'Partner'}!</h1>
-                <p>Here's how {restaurant?.name || 'your restaurant'} is performing today.</p>
+                <p>Here's how {restaurant?.name || 'your grocery store'} is performing today.</p>
               </div>
             </header>
 
@@ -682,8 +694,8 @@ const RestaurantDashboard = () => {
             <div className="dashboard-panels">
               <div className="panel inventory-snapshot">
                 <div className="panel-header">
-                  <Package size={16} />
-                  <h3>Inventory Snapshot</h3>
+                  <Boxes size={16} />
+                  <h3>Stock Overview</h3>
                 </div>
                 <div className="snapshot-list">
                   <div className="snapshot-item">
@@ -726,11 +738,11 @@ const RestaurantDashboard = () => {
           <div className="products-view fade-in">
             <header className="view-header with-action">
               <div className="header-titles">
-                <h1>Products</h1>
-                <p>Manage your menu or product catalog</p>
+                <h1>Grocery Items</h1>
+                <p>Manage your grocery product catalog</p>
               </div>
               <button className="btn-primary" onClick={() => setIsProductModalOpen(true)}>
-                <Plus size={16} /> Add Product
+                <Plus size={16} /> Add Item
               </button>
             </header>
 
@@ -776,8 +788,8 @@ const RestaurantDashboard = () => {
           <div className="inventory-view fade-in">
             <header className="view-header">
               <div className="header-titles">
-                <h1>Inventory</h1>
-                <p>Track and manage your stock levels</p>
+                <h1>Stock Management</h1>
+                <p>Track and manage your grocery stock levels</p>
               </div>
             </header>
 
@@ -928,7 +940,7 @@ const RestaurantDashboard = () => {
                       <span className={`r-order-badge ${order.status}`}>{order.status}</span>
                     </div>
                     <p className="f-o-customer">{order.customer} - {order.address}</p>
-                    <p className="f-o-meta">{order.itemCount} items &nbsp;&nbsp; <strong>₹{order.price}</strong> &nbsp;&nbsp; <span style={{color: 'var(--ph-text-muted)'}}>{order.time}</span> &nbsp;&nbsp; <span style={{fontWeight: 600, color: order.payment_method === 'COD' ? '#F97316' : '#10B981'}}>{order.payment_method} ({order.payment_status})</span></p>
+                    <p className="f-o-meta">{order.itemCount} items &nbsp;&nbsp; <strong>₹{order.price}</strong> &nbsp;&nbsp; <span style={{color: 'var(--ph-text-muted)'}}>{order.time}</span></p>
                   </div>
                   <div className="f-o-actions" style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
                     {(order.status === 'ready' || order.status === 'picked_up' || order.status === 'out_for_delivery') && (
@@ -1084,7 +1096,7 @@ const RestaurantDashboard = () => {
             <div style={{display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '16px', backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px', marginBottom: '24px'}}>
               <Info size={20} color="#3B82F6" style={{flexShrink: 0, marginTop: '2px'}} />
               <div style={{fontSize: '0.9rem', color: '#1E40AF', lineHeight: '1.5'}}>
-                <strong>How settlement works:</strong> The <strong>Gross Earnings</strong> is the total value of your food items sold. 
+                <strong>How settlement works:</strong> The <strong>Gross Earnings</strong> is the total value of your products sold. 
                 The platform deducts a <strong>Commission</strong> on each order. 
                 <br/>Your <strong>Net Settlement</strong> = Gross Earnings - Commission.
                 <br/>The net settlement is paid out to your bank account weekly by the Admin.
@@ -1110,17 +1122,14 @@ const RestaurantDashboard = () => {
                 <tbody>
                   {settlements.map(settlement => (
                     <tr key={settlement.id}>
-                      <td className="t-stock">{settlement.transaction_ref || settlement.id.substring(0,8)}</td>
-                      <td>-</td>
-                      <td className="text-red">-</td>
-                      <td className="text-green t-stock">₹{parseFloat(settlement.amount).toLocaleString()}</td>
-                      <td><span className={`r-order-badge ${settlement.status === 'completed' ? 'delivered' : 'pending'}`}>{settlement.status}</span></td>
-                      <td style={{color: 'var(--ph-text-muted)'}}>{new Date(settlement.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                      <td className="t-stock">{settlement.id}</td>
+                      <td>₹{settlement.gross}</td>
+                      <td className="text-red">-₹{settlement.commission}</td>
+                      <td className="text-green t-stock">₹{settlement.net}</td>
+                      <td><span className="r-order-badge delivered" style={{backgroundColor: '#e0e7ff', color: '#4f46e5'}}>{settlement.status}</span></td>
+                      <td style={{color: 'var(--ph-text-muted)'}}>{settlement.period}</td>
                     </tr>
                   ))}
-                  {settlements.length === 0 && (
-                    <tr><td colSpan="6" style={{textAlign: 'center', padding: '30px', color: '#6B7280'}}>No settlements found.</td></tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -1229,8 +1238,8 @@ const RestaurantDashboard = () => {
           <div className="settings-view fade-in">
             <header className="view-header">
               <div className="header-titles">
-                <h1>Settings</h1>
-                <p>Manage your business profile and preferences</p>
+                <h1>Store Settings</h1>
+                <p>Manage your grocery store profile and preferences</p>
               </div>
             </header>
 
@@ -1263,7 +1272,7 @@ const RestaurantDashboard = () => {
                     <input type="text" value={settingsForm.name || ''} onChange={e => setSettingsForm({...settingsForm, name: e.target.value})} />
                   </div>
                   <div className="form-group">
-                    <label>Category (Cuisine)</label>
+                    <label>Store Category</label>
                     <input type="text" value={settingsForm.cuisine_type || ''} onChange={e => setSettingsForm({...settingsForm, cuisine_type: e.target.value})} />
                   </div>
                 </div>
@@ -1335,7 +1344,11 @@ const RestaurantDashboard = () => {
                 </div>
                 <div className="form-group">
                   <label>Category *</label>
-                  <input type="text" placeholder="e.g. Main Course" required value={editingProduct.category} onChange={e => setEditingProduct({...editingProduct, category: e.target.value})} />
+                  <select required value={editingProduct.category} onChange={e => setEditingProduct({...editingProduct, category: e.target.value})}>
+                    {groceryProductCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               
@@ -1370,7 +1383,7 @@ const RestaurantDashboard = () => {
         <div className="modal-overlay fade-in">
           <div className="modal-content scale-in">
             <div className="modal-header">
-              <h2>Add New Product</h2>
+              <h2>Add Grocery Item</h2>
               <button className="close-btn" onClick={() => setIsProductModalOpen(false)}>
                 <X size={20} />
               </button>
@@ -1394,7 +1407,11 @@ const RestaurantDashboard = () => {
                 </div>
                 <div className="form-group">
                   <label>Category *</label>
-                  <input type="text" placeholder="e.g. Main Course" required value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} />
+                  <select required value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
+                    {groceryProductCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               
@@ -1427,7 +1444,7 @@ const RestaurantDashboard = () => {
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary">
-                  Add Product
+                  Add Item
                 </button>
               </div>
             </form>
@@ -1557,7 +1574,7 @@ const RestaurantDashboard = () => {
                   <span style={{fontSize: '1.3rem'}}>🚗</span>
                   <div>
                     <strong style={{color: '#1d4ed8', fontSize: '0.95rem'}}>Driver Assigned</strong>
-                    <p style={{margin: '2px 0 0', color: '#64748b', fontSize: '0.85rem'}}>A delivery partner has been assigned and is heading to your restaurant.</p>
+                    <p style={{margin: '2px 0 0', color: '#64748b', fontSize: '0.85rem'}}>A delivery partner has been assigned and is heading to your store.</p>
                   </div>
                 </div>
               )}
@@ -1721,4 +1738,4 @@ const RestaurantDashboard = () => {
   );
 };
 
-export default RestaurantDashboard;
+export default GroceryDashboard;

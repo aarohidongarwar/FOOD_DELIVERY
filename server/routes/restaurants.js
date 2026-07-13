@@ -16,7 +16,7 @@ router.get('/meta/cuisines', async (req, res) => {
 });
 
 // Get owner restaurant details — MUST be before /:id
-router.get('/owner/me', authenticateToken, requireRole('restaurant'), async (req, res) => {
+router.get('/owner/me', authenticateToken, requireRole('restaurant', 'grocery'), async (req, res) => {
   try {
     const [restaurants] = await db.execute('SELECT * FROM restaurants WHERE owner_id = ?', [req.user.id]);
     const restaurant = restaurants[0];
@@ -38,7 +38,7 @@ router.get('/owner/me', authenticateToken, requireRole('restaurant'), async (req
 });
 
 // Create/Register restaurant details — MUST be before /:id
-router.post('/owner/register', authenticateToken, requireRole('restaurant'), async (req, res) => {
+router.post('/owner/register', authenticateToken, requireRole('restaurant', 'grocery'), async (req, res) => {
   try {
     const { name, address, cuisine_type, registration_details } = req.body;
     
@@ -64,10 +64,11 @@ router.post('/owner/register', authenticateToken, requireRole('restaurant'), asy
     } else {
       // Create new
       const id = uuidv4();
+      const isGrocery = req.user.role === 'grocery' ? 1 : 0;
       await db.execute(
         `INSERT INTO restaurants (id, owner_id, name, description, address, cuisine_type, rating, total_ratings, is_active, is_grocery, registration_details, is_profile_complete)
-         VALUES (?, ?, ?, ?, ?, ?, 0.0, 0, 1, 0, ?, 1)`,
-        [id, req.user.id, name, registration_details?.businessType || 'New Restaurant Partner', address, cuisine_type || 'General', regDetailsString]
+         VALUES (?, ?, ?, ?, ?, ?, 0.0, 0, 1, ?, ?, 1)`,
+        [id, req.user.id, name, registration_details?.businessType || 'New Partner', address, cuisine_type || 'General', isGrocery, regDetailsString]
       );
       
       const [createdArr] = await db.execute('SELECT * FROM restaurants WHERE id = ?', [id]);
@@ -82,7 +83,7 @@ router.post('/owner/register', authenticateToken, requireRole('restaurant'), asy
 });
 
 // Update restaurant profile (owner settings)
-router.put('/owner/me', authenticateToken, requireRole('restaurant'), async (req, res) => {
+router.put('/owner/me', authenticateToken, requireRole('restaurant', 'grocery'), async (req, res) => {
   try {
     const { 
       name, description, address, cuisine_type, delivery_time, delivery_fee, min_order,
@@ -134,7 +135,7 @@ router.put('/owner/me', authenticateToken, requireRole('restaurant'), async (req
 });
 
 // Toggle restaurant open/closed
-router.put('/owner/toggle-status', authenticateToken, requireRole('restaurant'), async (req, res) => {
+router.put('/owner/toggle-status', authenticateToken, requireRole('restaurant', 'grocery'), async (req, res) => {
   try {
     const { is_open } = req.body;
     await db.execute('UPDATE restaurants SET is_open = ? WHERE owner_id = ?', [is_open ? 1 : 0, req.user.id]);

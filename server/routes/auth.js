@@ -14,7 +14,7 @@ router.post('/register', validateRegistration, async (req, res) => {
       name, email, password, phone, role = 'customer', address,
       vehicleType, vehicleNumber, licenseNumber, emergencyContact 
     } = req.body;
-    const allowedRoles = ['customer', 'driver', 'restaurant'];
+    const allowedRoles = ['customer', 'driver', 'restaurant', 'grocery'];
     if (!allowedRoles.includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }

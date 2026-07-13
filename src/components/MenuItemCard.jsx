@@ -2,12 +2,13 @@ import { Plus, Minus } from 'lucide-react';
 import useCartStore from '../stores/cartStore';
 import './MenuItemCard.css';
 
-export default function MenuItemCard({ item, restaurantId, restaurantName }) {
+export default function MenuItemCard({ item, restaurantId, restaurantName, isGrocery }) {
   const { addItem, updateQuantity, getItemQuantity } = useCartStore();
-  const qty = getItemQuantity(item.id);
+  const cartType = isGrocery ? 'grocery' : 'food';
+  const qty = getItemQuantity(item.id, cartType);
 
   const handleAdd = () => {
-    addItem(item, restaurantId, restaurantName);
+    addItem(item, restaurantId, restaurantName, cartType);
   };
 
   return (
@@ -37,11 +38,11 @@ export default function MenuItemCard({ item, restaurantId, restaurantName }) {
             </button>
           ) : (
             <div className="mic-qty-control">
-              <button className="mic-qty-btn" onClick={() => updateQuantity(item.id, qty - 1)}>
+              <button className="mic-qty-btn" onClick={() => updateQuantity(item.id, qty - 1, cartType)}>
                 <Minus size={14} />
               </button>
               <span className="mic-qty">{qty}</span>
-              <button className="mic-qty-btn" onClick={() => updateQuantity(item.id, qty + 1)}>
+              <button className="mic-qty-btn" onClick={() => updateQuantity(item.id, qty + 1, cartType)}>
                 <Plus size={14} />
               </button>
             </div>

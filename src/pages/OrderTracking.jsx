@@ -353,6 +353,28 @@ export default function OrderTracking() {
               </div>
             </div>
 
+            {/* Phase 3: Payment Info Badges */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', margin: '12px 0' }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                padding: '4px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600',
+                backgroundColor: currentOrder.payment_method === 'COD' ? '#FFF7ED' : '#F0FDF4',
+                color: currentOrder.payment_method === 'COD' ? '#C2410C' : '#15803D',
+                border: `1px solid ${currentOrder.payment_method === 'COD' ? '#FDBA74' : '#86EFAC'}`
+              }}>
+                {currentOrder.payment_method === 'COD' ? '💵 Cash on Delivery' : '💳 Online Payment'}
+              </span>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                padding: '4px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600',
+                backgroundColor: currentOrder.payment_status === 'paid' ? '#F0FDF4' : '#FFFBEB',
+                color: currentOrder.payment_status === 'paid' ? '#15803D' : '#B45309',
+                border: `1px solid ${currentOrder.payment_status === 'paid' ? '#86EFAC' : '#FCD34D'}`
+              }}>
+                {currentOrder.payment_status === 'paid' ? '✅ Paid' : '⏳ Payment Pending'}
+              </span>
+            </div>
+
             <div className="tp-address">
               <h4>Delivery Address</h4>
               <p>{delivery_address}</p>

@@ -17,7 +17,7 @@ export default function PartnershipType() {
       title: 'Grocery Vendor Partner',
       description: 'Local kirana, supermarket, or specialty store. Deliver groceries in minutes.',
       icon: <ShoppingBasket size={32} />,
-      link: '/register-grocery'
+      link: '/login?role=grocery'
     }
   ];
 

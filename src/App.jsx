@@ -53,10 +53,11 @@ const GroceryRegistration = lazy(() => import('./pages/GroceryRegistration'));
 const RiderLogin = lazy(() => import('./pages/RiderLogin'));
 const RiderRegistration = lazy(() => import('./pages/RiderRegistration'));
 const RestaurantDashboard = lazy(() => import('./pages/RestaurantDashboard'));
+const GroceryDashboard = lazy(() => import('./pages/GroceryDashboard'));
 
 // Routes where UI elements should be hidden
-const HIDE_FOOTER_ROUTES = ['/login', '/onboarding', '/partnership-type', '/register-restaurant', '/register-grocery', '/rider/login', '/rider/register', '/driver', '/admin', '/restaurant-dashboard'];
-const MINIMAL_LAYOUT_ROUTES = ['/login', '/onboarding', '/partnership-type', '/rider/login', '/rider/register', '/register-restaurant', '/register-grocery', '/driver', '/admin', '/restaurant-dashboard'];
+const HIDE_FOOTER_ROUTES = ['/login', '/onboarding', '/partnership-type', '/register-restaurant', '/register-grocery', '/rider/login', '/rider/register', '/driver', '/admin', '/restaurant-dashboard', '/grocery-dashboard'];
+const MINIMAL_LAYOUT_ROUTES = ['/login', '/onboarding', '/partnership-type', '/rider/login', '/rider/register', '/register-restaurant', '/register-grocery', '/driver', '/admin', '/restaurant-dashboard', '/grocery-dashboard'];
 
 function AppLayout() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -115,8 +116,13 @@ function AppLayout() {
             {/* Restaurant Partner Routes */}
             <Route element={<ProtectedRoute allowedRoles={['restaurant']} />}> 
               <Route path="/restaurant-dashboard" element={<RestaurantDashboard />} />
-
             </Route>
+
+            {/* Grocery Vendor Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['grocery']} />}> 
+              <Route path="/grocery-dashboard" element={<GroceryDashboard />} />
+            </Route>
+
           </Routes>
         </Suspense>
       </main>

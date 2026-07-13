@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 
-// Get current logged-in user's token
 const getToken = () => localStorage.getItem('quickbite_token');
 
 const getUserId = () => {
@@ -14,17 +13,31 @@ const getUserId = () => {
   return 'guest';
 };
 
-const getCartKey = () => `quickbite_cart_${getUserId()}`;
-const getRestaurantKey = () => `quickbite_cart_restaurant_${getUserId()}`;
-const getRestaurantNameKey = () => `quickbite_cart_restaurant_name_${getUserId()}`;
+const getCartsKey = () => `quickbite_carts_${getUserId()}`;
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+const getDefaultCartState = () => ({
+  items: [],
+  restaurantId: null,
+  restaurantName: '',
+  deliveryFee: 29
+});
+
+const loadCarts = () => {
+  try {
+    const data = localStorage.getItem(getCartsKey());
+    if (data) return JSON.parse(data);
+  } catch (err) { console.error('Failed to parse carts', err); }
+  return { food: getDefaultCartState(), grocery: getDefaultCartState() };
+};
+
+const saveCarts = (carts) => {
+  localStorage.setItem(getCartsKey(), JSON.stringify(carts));
+};
+
 const useCartStore = create((set, get) => ({
-  items: JSON.parse(localStorage.getItem(getCartKey()) || '[]'),
-  restaurantId: localStorage.getItem(getRestaurantKey()) || null,
-  restaurantName: localStorage.getItem(getRestaurantNameKey()) || '',
-  deliveryFee: 29,
+  carts: loadCarts(),
 
   // Sync with server if logged in
   syncFromServer: async () => {
@@ -36,58 +49,73 @@ const useCartStore = create((set, get) => ({
       });
       if (res.ok) {
         const data = await res.json();
+        const newCarts = { food: getDefaultCartState(), grocery: getDefaultCartState() };
+        
         if (data && data.length > 0) {
-          const restaurantId = data[0].restaurant_id;
-          const restaurantName = data[0].restaurant_name;
-          const mappedItems = data.map(i => ({
-            menu_item_id: i.menu_item_id,
-            name: i.name,
-            price: i.price,
-            quantity: i.quantity,
-            image_url: i.image_url,
-            is_veg: i.is_veg
-          }));
-          localStorage.setItem(getCartKey(), JSON.stringify(mappedItems));
-          localStorage.setItem(getRestaurantKey(), restaurantId);
-          localStorage.setItem(getRestaurantNameKey(), restaurantName);
-          set({ items: mappedItems, restaurantId, restaurantName });
+          data.forEach(i => {
+            const type = i.cart_type || 'food';
+            newCarts[type].restaurantId = i.restaurant_id;
+            newCarts[type].restaurantName = i.restaurant_name;
+            newCarts[type].items.push({
+              menu_item_id: i.menu_item_id,
+              name: i.name,
+              price: i.price,
+              quantity: i.quantity,
+              image_url: i.image_url,
+              is_veg: i.is_veg,
+              cart_type: type
+            });
+          });
         }
+        set({ carts: newCarts });
+        saveCarts(newCarts);
       }
     } catch (err) { console.error('Failed to sync cart from server:', err); }
   },
 
-  addItem: async (item, restaurantId, restaurantName) => {
+  addItem: async (item, restaurantId, restaurantName, cartType = 'food') => {
     const state = get();
+    const currentCart = state.carts[cartType];
 
-    if (state.restaurantId && state.restaurantId !== restaurantId) {
-      if (!window.confirm('Your cart contains items from another restaurant. Clear cart and add this item?')) {
+    if (currentCart.restaurantId && currentCart.restaurantId !== restaurantId) {
+      if (!window.confirm(`Your ${cartType} cart contains items from another store. Clear it and add this item?`)) {
         return false;
       }
-      get().clearCart();
+      get().clearCart(cartType);
     }
 
-    const existing = get().items.find(i => i.menu_item_id === item.id);
+    const cartState = get().carts[cartType];
+    const existing = cartState.items.find(i => i.menu_item_id === item.id);
     let newItems;
 
     if (existing) {
-      newItems = get().items.map(i =>
+      newItems = cartState.items.map(i =>
         i.menu_item_id === item.id ? { ...i, quantity: i.quantity + 1 } : i
       );
     } else {
-      newItems = [...(get().restaurantId === restaurantId ? get().items : []), {
+      newItems = [...(cartState.restaurantId === restaurantId ? cartState.items : []), {
         menu_item_id: item.id,
         name: item.name,
         price: item.price,
         quantity: 1,
         image_url: item.image_url,
         is_veg: item.is_veg,
+        cart_type: cartType
       }];
     }
 
-    localStorage.setItem(getCartKey(), JSON.stringify(newItems));
-    localStorage.setItem(getRestaurantKey(), restaurantId);
-    localStorage.setItem(getRestaurantNameKey(), restaurantName);
-    set({ items: newItems, restaurantId, restaurantName, deliveryFee: item.delivery_fee || 29 });
+    const newCarts = {
+      ...get().carts,
+      [cartType]: {
+        items: newItems,
+        restaurantId,
+        restaurantName,
+        deliveryFee: item.delivery_fee || 29
+      }
+    };
+
+    set({ carts: newCarts });
+    saveCarts(newCarts);
 
     // Server call
     const token = getToken();
@@ -95,22 +123,26 @@ const useCartStore = create((set, get) => ({
       fetch(`${API_URL}/cart`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ restaurant_id: restaurantId, menu_item_id: item.id, quantity: 1 })
+        body: JSON.stringify({ restaurant_id: restaurantId, menu_item_id: item.id, quantity: 1, cart_type: cartType })
       }).catch(console.error);
     }
     return true;
   },
 
-  removeItem: (menuItemId) => {
-    const newItems = get().items.filter(i => i.menu_item_id !== menuItemId);
-    localStorage.setItem(getCartKey(), JSON.stringify(newItems));
+  removeItem: (menuItemId, cartType = 'food') => {
+    const cartState = get().carts[cartType];
+    const newItems = cartState.items.filter(i => i.menu_item_id !== menuItemId);
+    
+    let updatedCart;
     if (newItems.length === 0) {
-      localStorage.removeItem(getRestaurantKey());
-      localStorage.removeItem(getRestaurantNameKey());
-      set({ items: newItems, restaurantId: null, restaurantName: '' });
+      updatedCart = getDefaultCartState();
     } else {
-      set({ items: newItems });
+      updatedCart = { ...cartState, items: newItems };
     }
+
+    const newCarts = { ...get().carts, [cartType]: updatedCart };
+    set({ carts: newCarts });
+    saveCarts(newCarts);
 
     const token = getToken();
     if (token) {
@@ -121,16 +153,19 @@ const useCartStore = create((set, get) => ({
     }
   },
 
-  updateQuantity: (menuItemId, quantity) => {
+  updateQuantity: (menuItemId, quantity, cartType = 'food') => {
     if (quantity <= 0) {
-      get().removeItem(menuItemId);
+      get().removeItem(menuItemId, cartType);
       return;
     }
-    const newItems = get().items.map(i =>
+    const cartState = get().carts[cartType];
+    const newItems = cartState.items.map(i =>
       i.menu_item_id === menuItemId ? { ...i, quantity } : i
     );
-    localStorage.setItem(getCartKey(), JSON.stringify(newItems));
-    set({ items: newItems });
+    
+    const newCarts = { ...get().carts, [cartType]: { ...cartState, items: newItems } };
+    set({ carts: newCarts });
+    saveCarts(newCarts);
 
     const token = getToken();
     if (token) {
@@ -142,15 +177,22 @@ const useCartStore = create((set, get) => ({
     }
   },
 
-  clearCart: () => {
-    localStorage.removeItem(getCartKey());
-    localStorage.removeItem(getRestaurantKey());
-    localStorage.removeItem(getRestaurantNameKey());
-    set({ items: [], restaurantId: null, restaurantName: '' });
+  clearCart: (cartType = null) => {
+    let newCarts;
+    
+    if (cartType) {
+      newCarts = { ...get().carts, [cartType]: getDefaultCartState() };
+    } else {
+      newCarts = { food: getDefaultCartState(), grocery: getDefaultCartState() };
+    }
+    
+    set({ carts: newCarts });
+    saveCarts(newCarts);
 
     const token = getToken();
     if (token) {
-      fetch(`${API_URL}/cart`, {
+      const url = cartType ? `${API_URL}/cart?cart_type=${cartType}` : `${API_URL}/cart`;
+      fetch(url, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       }).catch(console.error);
@@ -158,19 +200,23 @@ const useCartStore = create((set, get) => ({
   },
 
   refreshCart: () => {
-    set(() => {
-      const items = JSON.parse(localStorage.getItem(getCartKey()) || '[]');
-      const restaurantId = localStorage.getItem(getRestaurantKey()) || null;
-      const restaurantName = localStorage.getItem(getRestaurantNameKey()) || '';
-      return { items, restaurantId, restaurantName };
-    });
+    set({ carts: loadCarts() });
     get().syncFromServer();
   },
 
-  getSubtotal: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
-  getTotal: () => get().getSubtotal() + get().deliveryFee,
-  getItemCount: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
-  getItemQuantity: (menuItemId) => get().items.find(i => i.menu_item_id === menuItemId)?.quantity || 0,
+  getSubtotal: (cartType = 'food') => get().carts[cartType].items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+  getTotal: (cartType = 'food') => {
+    const subtotal = get().getSubtotal(cartType);
+    return subtotal > 0 ? subtotal + get().carts[cartType].deliveryFee : 0;
+  },
+  getItemCount: (cartType = null) => {
+    if (cartType) {
+      return get().carts[cartType].items.reduce((sum, i) => sum + i.quantity, 0);
+    }
+    return get().carts.food.items.reduce((sum, i) => sum + i.quantity, 0) + 
+           get().carts.grocery.items.reduce((sum, i) => sum + i.quantity, 0);
+  },
+  getItemQuantity: (menuItemId, cartType = 'food') => get().carts[cartType].items.find(i => i.menu_item_id === menuItemId)?.quantity || 0,
 }));
 
 export default useCartStore;

@@ -10,7 +10,7 @@ export default function Login() {
   
   const params = new URLSearchParams(location.search);
   const roleParam = params.get('role');
-  const isRestaurantRole = roleParam === 'restaurant';
+  const isPartnerRole = ['restaurant', 'grocery'].includes(roleParam);
   
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
@@ -18,16 +18,22 @@ export default function Login() {
     email: '',
     password: '',
     phone: '',
-    role: ['customer', 'driver', 'restaurant', 'admin'].includes(roleParam) ? roleParam : 'customer'
+    role: ['customer', 'driver', 'restaurant', 'admin', 'grocery'].includes(roleParam) ? roleParam : 'customer'
   });
   
-  const { login, register, isAuthenticated, loading, error } = useAuthStore();
+  const { user, login, register, isAuthenticated, silentLogout, loading, error } = useAuthStore();
 
   useEffect(() => {
     if (isAuthenticated()) {
-      redirectUser(useAuthStore.getState().user);
+      // If navigating to a specific role login that doesn't match current role, log them out.
+      // Also log out if they go to the generic login page while logged in as a partner/driver.
+      if ((roleParam && user?.role !== roleParam) || (!roleParam && user?.role !== 'customer')) {
+        silentLogout();
+      } else {
+        redirectUser(user);
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, roleParam, user, silentLogout]);
 
   const redirectUser = (user) => {
     if (location.state?.returnTo) {
@@ -39,6 +45,7 @@ export default function Login() {
       case 'admin': navigate('/admin', { replace: true }); break;
       case 'driver': navigate('/driver', { replace: true }); break;
       case 'restaurant': navigate('/restaurant-dashboard', { replace: true }); break;
+      case 'grocery': navigate('/grocery-dashboard', { replace: true }); break;
       default: navigate('/home', { replace: true }); break;
     }
   };
@@ -150,7 +157,7 @@ export default function Login() {
             />
           </div>
 
-          {!isLogin && !isRestaurantRole && (
+          {!isLogin && !isPartnerRole && (
             <div className="input-group">
               <label>Register As</label>
               <select 
@@ -162,6 +169,7 @@ export default function Login() {
                 <option value="customer">Customer</option>
                 <option value="driver">Delivery Partner</option>
                 <option value="restaurant">Restaurant Owner</option>
+                <option value="grocery">Grocery Vendor</option>
               </select>
             </div>
           )}
@@ -188,79 +196,25 @@ export default function Login() {
           </p>
         </div>
 
-        {isLogin && (
+        {isLogin && roleParam === 'admin' && (
           <div className="quick-login-section">
             <div className="divider">
               <span>OR QUICK LOGIN AS</span>
             </div>
-            {roleParam === 'admin' ? (
-              <div className="quick-login-grid-single">
-                <button 
-                  type="button" 
-                  className="btn btn-outline quick-login-btn-admin"
-                  onClick={() => {
-                    setFormData(prev => ({ ...prev, email: 'admin@quickbite.com', password: 'password123' }));
-                  }}
-                >
-                  <span className="admin-btn-icon">
-                    <ShieldCheck size={20} />
-                  </span>
-                  Admin
-                </button>
-              </div>
-            ) : roleParam === 'restaurant' ? (
-              <div className="quick-login-grid-single">
-                <button 
-                  type="button" 
-                  className="btn btn-outline quick-login-btn-owner"
-                  onClick={() => {
-                    setFormData(prev => ({ ...prev, email: 'owner1@quickbite.com', password: 'password123' }));
-                  }}
-                >
-                  <span className="owner-btn-icon">🏪</span>
-                  Owner
-                </button>
-              </div>
-            ) : (
-              <div className="quick-login-grid">
-                <button 
-                  type="button" 
-                  className="btn btn-outline btn-sm"
-                  onClick={() => {
-                    setFormData(prev => ({ ...prev, email: 'rahul@example.com', password: 'password123' }));
-                  }}
-                >
-                  👤 Customer
-                </button>
-                <button 
-                  type="button" 
-                  className="btn btn-outline btn-sm"
-                  onClick={() => {
-                    setFormData(prev => ({ ...prev, email: 'owner1@quickbite.com', password: 'password123' }));
-                  }}
-                >
-                  🏪 Owner
-                </button>
-                <button 
-                  type="button" 
-                  className="btn btn-outline btn-sm"
-                  onClick={() => {
-                    setFormData(prev => ({ ...prev, email: 'driver1@example.com', password: 'password123' }));
-                  }}
-                >
-                  🚴 Driver
-                </button>
-                <button 
-                  type="button" 
-                  className="btn btn-outline btn-sm"
-                  onClick={() => {
-                    setFormData(prev => ({ ...prev, email: 'admin@quickbite.com', password: 'password123' }));
-                  }}
-                >
-                  🛡️ Admin
-                </button>
-              </div>
-            )}
+            <div className="quick-login-grid-single">
+              <button 
+                type="button" 
+                className="btn btn-outline quick-login-btn-admin"
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, email: 'admin@quickbite.com', password: 'password123' }));
+                }}
+              >
+                <span className="admin-btn-icon">
+                  <ShieldCheck size={20} />
+                </span>
+                Admin
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -206,30 +206,58 @@ router.post('/pickup/:orderId', authenticateToken, async (req, res) => {
 
 // Confirm delivery with OTP
 router.post('/deliver/:orderId', authenticateToken, async (req, res) => {
+  let connection;
   try {
-    const { otp, actualPaymentMethod } = req.body;
+    const { otp, actualPaymentMethod, cash_collected } = req.body;
     const orderId = req.params.orderId;
     
-    const [orders] = await db.execute('SELECT delivery_otp, user_id, restaurant_id, payment_method FROM orders WHERE id=? AND driver_id=?', [orderId, req.user.id]);
+    connection = await db.pool.getConnection();
+    await connection.beginTransaction();
+
+    const [orders] = await connection.execute('SELECT delivery_otp, user_id, restaurant_id, payment_method, grand_total FROM orders WHERE id=? AND driver_id=?', [orderId, req.user.id]);
     const order = orders[0];
     
-    if (!order) return res.status(404).json({ error: 'Order not found or not assigned to you' });
+    if (!order) {
+      await connection.rollback();
+      connection.release();
+      return res.status(404).json({ error: 'Order not found or not assigned to you' });
+    }
     
     if (!otp || String(order.delivery_otp) !== String(otp)) {
+      await connection.rollback();
+      connection.release();
       return res.status(400).json({ error: 'Invalid delivery OTP' });
+    }
+
+    // Phase 3: Cash enforcement — driver must confirm cash collection for COD orders
+    if (order.payment_method === 'COD' && actualPaymentMethod !== 'UPI' && !cash_collected) {
+      await connection.rollback();
+      connection.release();
+      return res.status(400).json({ error: 'Please confirm that you have collected the cash payment from the customer before completing delivery.' });
     }
 
     let finalPaymentMethod = order.payment_method;
     if (order.payment_method === 'COD' && actualPaymentMethod === 'UPI') {
-      finalPaymentMethod = 'UPI'; // Update to UPI if paid via QR at door
+      finalPaymentMethod = 'ONLINE'; // 'UPI' is not a valid ENUM value for orders.payment_method; use 'ONLINE'
     }
 
-    await db.execute(
+    await connection.execute(
       "UPDATE orders SET status='delivered', payment_status='paid', payment_method=?, delivered_at=NOW(), updated_at=NOW() WHERE id=?", 
       [finalPaymentMethod, orderId]
     );
-    await db.execute("UPDATE delivery_agents SET status='available', total_deliveries=total_deliveries+1 WHERE user_id=?", [req.user.id]);
+    await connection.execute("UPDATE delivery_agents SET status='available', total_deliveries=total_deliveries+1 WHERE user_id=?", [req.user.id]);
+
+    // Fix: Also update the payments table record from 'pending' to 'completed' for COD orders
+    if (order.payment_method === 'COD') {
+      await connection.execute(
+        "UPDATE payments SET status='completed', transaction_id=? WHERE order_id=? AND status='pending'",
+        [`COD_COLLECTED_${Date.now()}`, orderId]
+      );
+    }
     
+    await connection.commit();
+    connection.release();
+
     const [updatedOrder] = await db.execute('SELECT * FROM orders WHERE id=?', [orderId]);
     
     const io = req.app.get('io');
@@ -247,6 +275,10 @@ router.post('/deliver/:orderId', authenticateToken, async (req, res) => {
     
     res.json({ success: true });
   } catch (err) { 
+    if (connection) {
+      await connection.rollback();
+      connection.release();
+    }
     res.status(500).json({ error: 'Failed to confirm delivery' }); 
   }
 });
@@ -339,6 +371,24 @@ router.post('/settle-cash', authenticateToken, async (req, res) => {
       "INSERT INTO settlements (id, entity_type, entity_id, amount, status, transaction_ref) VALUES (?, 'driver', ?, ?, 'pending', ?)",
       [id, req.user.id, amount, transaction_ref]
     );
+
+    // Phase 3: Notify all admin users via WebSocket
+    const io = req.app.get('io');
+    if (io) {
+      const [driverRows] = await db.execute('SELECT name FROM users WHERE id = ?', [req.user.id]);
+      const driverName = driverRows[0]?.name || 'A driver';
+      const [adminUsers] = await db.execute("SELECT id FROM users WHERE role = 'admin'");
+      for (const admin of adminUsers) {
+        await createNotification(
+          admin.id,
+          'Driver Settlement Request',
+          `${driverName} has submitted a cash settlement request of ₹${Math.abs(amount).toLocaleString()} (Ref: ${transaction_ref}).`,
+          'info',
+          io
+        );
+      }
+    }
+
     res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ error: 'Failed to request settlement' });

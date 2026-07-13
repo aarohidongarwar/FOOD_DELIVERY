@@ -178,6 +178,30 @@ router.post('/', authenticateToken, validateOrderPlacement, async (req, res) => 
     const actual_payment_method = isOnline ? 'ONLINE' : 'COD';
     const initial_payment_status = (isOnline || wallet_deducted >= grand_total) ? 'paid' : 'pending';
 
+    // ── Phase 3: COD Controls ──
+    if (actual_payment_method === 'COD') {
+      // (a) COD order limit — ₹1,500
+      if (grand_total > 1500) {
+        await connection.rollback();
+        connection.release();
+        return res.status(400).json({ error: 'Cash on Delivery is not available for orders above ₹1,500. Please use an online payment method.' });
+      }
+
+      // (b) Abuse prevention — block COD if 2+ cancelled COD orders in last 10
+      const [recentOrders] = await connection.execute(
+        `SELECT payment_method, status FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 10`,
+        [req.user.id]
+      );
+      const cancelledCodCount = recentOrders.filter(
+        o => o.status === 'cancelled' && o.payment_method === 'COD'
+      ).length;
+      if (cancelledCodCount >= 2) {
+        await connection.rollback();
+        connection.release();
+        return res.status(400).json({ error: 'Cash on Delivery is temporarily disabled for your account due to recent order cancellations. Please use an online payment method.' });
+      }
+    }
+
     // Insert Order
     await connection.execute(
       `INSERT INTO orders (id, user_id, restaurant_id, status, item_total, delivery_fee, tax_amount, discount_amount, grand_total, promo_code_id, delivery_address, delivery_lat, delivery_lon, special_instructions, payment_method, payment_status, commission_amount, restaurant_earnings)
@@ -341,7 +365,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Restaurant Accepts Order
-router.put('/:id/accept', authenticateToken, requireRole('restaurant'), async (req, res) => {
+router.put('/:id/accept', authenticateToken, requireRole('restaurant', 'grocery'), async (req, res) => {
   try {
     const isOwner = await checkRestaurantOwnership(req.params.id, req.user.id);
     if (!isOwner) return res.status(403).json({ error: 'Access denied' });
@@ -375,18 +399,46 @@ router.put('/:id/accept', authenticateToken, requireRole('restaurant'), async (r
 });
 
 // Restaurant Rejects Order
-router.put('/:id/reject', authenticateToken, requireRole('restaurant'), async (req, res) => {
+router.put('/:id/reject', authenticateToken, requireRole('restaurant', 'grocery'), async (req, res) => {
   try {
     const isOwner = await checkRestaurantOwnership(req.params.id, req.user.id);
     if (!isOwner) return res.status(403).json({ error: 'Access denied' });
 
     const { reason } = req.body;
+
+    // Fetch order details before cancelling (needed for refund)
+    const [orderRows] = await db.execute('SELECT user_id, grand_total FROM orders WHERE id=?', [req.params.id]);
+    const orderData = orderRows[0];
+
     await db.execute(
       "UPDATE orders SET status='cancelled', cancel_reason=?, cancelled_at=NOW(), updated_at=NOW() WHERE id=?", 
       [reason || 'Rejected by restaurant', req.params.id]
     );
     
-    // Process refund logic would go here
+    // Refund wallet deduction if customer used wallet for this order
+    if (orderData) {
+      const [wallets] = await db.execute('SELECT * FROM wallets WHERE user_id=?', [orderData.user_id]);
+      const wallet = wallets[0];
+      if (wallet) {
+        // Find any wallet debit transaction linked to this order
+        const [walletDebits] = await db.execute(
+          "SELECT * FROM wallet_transactions WHERE wallet_id=? AND related_order_id=? AND type='debit'",
+          [wallet.id, req.params.id]
+        );
+        if (walletDebits.length > 0) {
+          const debitAmount = parseFloat(walletDebits[0].amount);
+          // Credit the amount back to the wallet
+          const newBalance = parseFloat(wallet.balance) + debitAmount;
+          await db.execute('UPDATE wallets SET balance=? WHERE id=?', [newBalance, wallet.id]);
+          await db.execute(
+            "INSERT INTO wallet_transactions (id, wallet_id, type, amount, description, related_order_id) VALUES (?, ?, 'credit', ?, ?, ?)",
+            [uuidv4(), wallet.id, debitAmount, `Refund for cancelled order ${req.params.id.substring(0, 8)}`, req.params.id]
+          );
+        }
+      }
+      // Update payment record status
+      await db.execute("UPDATE payments SET status='refunded' WHERE order_id=?", [req.params.id]);
+    }
     
     const order = await getCompleteOrder(req.params.id);
     
@@ -404,7 +456,7 @@ router.put('/:id/reject', authenticateToken, requireRole('restaurant'), async (r
 });
 
 // Restaurant Marks Order as Ready (Triggers Driver Assignment)
-router.put('/:id/ready', authenticateToken, requireRole('restaurant'), async (req, res) => {
+router.put('/:id/ready', authenticateToken, requireRole('restaurant', 'grocery'), async (req, res) => {
   try {
     const isOwner = await checkRestaurantOwnership(req.params.id, req.user.id);
     if (!isOwner) return res.status(403).json({ error: 'Access denied' });
@@ -434,7 +486,7 @@ router.put('/:id/ready', authenticateToken, requireRole('restaurant'), async (re
 });
 
 // Update order status (Generic fallback)
-router.put('/:id/status', authenticateToken, requireRole('restaurant', 'admin'), async (req, res) => {
+router.put('/:id/status', authenticateToken, requireRole('restaurant', 'admin', 'grocery'), async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       const isOwner = await checkRestaurantOwnership(req.params.id, req.user.id);
@@ -476,7 +528,7 @@ router.put('/:id/status', authenticateToken, requireRole('restaurant', 'admin'),
 });
 
 // Get restaurant orders
-router.get('/restaurant/:restaurantId', authenticateToken, requireRole('restaurant', 'admin'), async (req, res) => {
+router.get('/restaurant/:restaurantId', authenticateToken, requireRole('restaurant', 'admin', 'grocery'), async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       const isOwner = await checkDirectRestaurantOwnership(req.params.restaurantId, req.user.id);
@@ -492,7 +544,7 @@ router.get('/restaurant/:restaurantId', authenticateToken, requireRole('restaura
 });
 
 // Get restaurant analytics
-router.get('/restaurant/:restaurantId/analytics', authenticateToken, requireRole('restaurant', 'admin'), async (req, res) => {
+router.get('/restaurant/:restaurantId/analytics', authenticateToken, requireRole('restaurant', 'admin', 'grocery'), async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       const isOwner = await checkDirectRestaurantOwnership(req.params.restaurantId, req.user.id);
@@ -567,6 +619,27 @@ router.get('/restaurant/:restaurantId/analytics', authenticateToken, requireRole
   } catch (err) {
     console.error('Restaurant analytics error:', err);
     res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
+// Get restaurant settlement history
+router.get('/restaurant/:restaurantId/settlements', authenticateToken, requireRole('restaurant', 'admin', 'grocery'), async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      const isOwner = await checkDirectRestaurantOwnership(req.params.restaurantId, req.user.id);
+      if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+    }
+    const restaurantId = req.params.restaurantId;
+    
+    const [settlements] = await db.execute(
+      `SELECT * FROM settlements WHERE entity_type='restaurant' AND entity_id=? ORDER BY created_at DESC`,
+      [restaurantId]
+    );
+    
+    res.json(settlements);
+  } catch (err) {
+    console.error('Restaurant settlements error:', err);
+    res.status(500).json({ error: 'Failed to fetch settlements' });
   }
 });
 

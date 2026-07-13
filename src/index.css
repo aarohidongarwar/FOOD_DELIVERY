@@ -564,3 +564,50 @@ h5 { font-size: 1.125rem; }
     font-size: 0.813rem;
   }
 }
+
+/* ═══ Safe Area Insets (iPhone notch, Android navbar) ═══ */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .footer-bottom {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .rd-cart-bar {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .cart-footer {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ═══ Touch-friendly: minimum 44px tap targets ═══ */
+@media (hover: none) and (pointer: coarse) {
+  button, a, .btn, input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  textarea,
+  select {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+}
+
+/* ═══ Smooth scrolling for all overflowing containers ═══ */
+.mind-carousel,
+.cuisines-carousel,
+.rd-tabs {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.mind-carousel::-webkit-scrollbar,
+.cuisines-carousel::-webkit-scrollbar,
+.rd-tabs::-webkit-scrollbar {
+  display: none;
+}

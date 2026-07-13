@@ -22,7 +22,8 @@ import {
   Lock,
   Mail,
   X,
-  Navigation
+  Navigation,
+  Info
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
@@ -95,12 +96,36 @@ export default function DriverDashboard() {
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpInput, setOtpInput] = useState('');
   const [currentLocation, setCurrentLocation] = useState(null);
+
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          setCurrentLocation({
+            lat: position.coords.latitude,
+            lon: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          // Fallback to Nagpur if denied for testing
+          setCurrentLocation({ lat: 21.1458, lon: 79.0882 });
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      );
+      return () => navigator.geolocation.clearWatch(watchId);
+    } else {
+      setCurrentLocation({ lat: 21.1458, lon: 79.0882 });
+    }
+  }, []);
+  
   const [activeDeliveries, setActiveDeliveries] = useState([]);
   const [socket, setSocket] = useState(null);
   const [simulatingOrder, setSimulatingOrder] = useState(null);
   const [otpType, setOtpType] = useState('delivery');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [deliveryPaymentMethod, setDeliveryPaymentMethod] = useState('COD');
+  const [cashCollected, setCashCollected] = useState(false);
   const [newRequest, setNewRequest] = useState(null);
   const [showNavModal, setShowNavModal] = useState(false);
   const [navOrder, setNavOrder] = useState(null);
@@ -274,6 +299,7 @@ export default function DriverDashboard() {
         customer: order.customer_name,
         phone: order.customer_phone,
         fee: order.delivery_fee,
+        payment_method: order.payment_method,
         expanded: false,
         status: order.status === 'out_for_delivery' ? 'On The Way' : 'Preparing/Assigned'
       })));
@@ -367,6 +393,7 @@ export default function DriverDashboard() {
     setSelectedOrderId(id);
     setOtpType(type);
     setDeliveryPaymentMethod('COD');
+    setCashCollected(false);
     setShowOtpModal(true);
     setOtpInput('');
   };
@@ -380,7 +407,8 @@ export default function DriverDashboard() {
         } else {
           await api.post(`/delivery/deliver/${selectedOrderId}`, { 
             otp: otpInput, 
-            actualPaymentMethod: deliveryPaymentMethod === 'UPI' ? 'UPI' : 'COD'
+            actualPaymentMethod: deliveryPaymentMethod === 'UPI' ? 'UPI' : 'COD',
+            cash_collected: deliveryPaymentMethod === 'UPI' ? true : cashCollected
           });
           toast.success('Order delivered successfully!');
           setActiveDeliveries(activeDeliveries.filter(o => o.id !== selectedOrderId));
@@ -795,42 +823,53 @@ export default function DriverDashboard() {
 
         {activeTab === 'earnings' && (
           <div className="earnings-view">
-            {/* Summary Cards */}
+            {/* Earnings & Settlement Summary */}
             <div className="earnings-summary-grid">
               <div className="dashboard-card">
                 <div className="card-top">
-                  <span className="card-label">Today</span>
-                  <CircleDollarSign size={18} className="card-icon text-green" />
+                  <span className="card-label">Total Delivery Fees</span>
+                  <Package size={18} className="card-icon text-green" />
                 </div>
-                <div className="card-value">₹{stats.todayEarnings}</div>
-              </div>
-              <div className="dashboard-card">
-                <div className="card-top">
-                  <span className="card-label">This Week</span>
-                  <TrendingUp size={18} className="card-icon text-orange" />
-                </div>
-                <div className="card-value">₹{stats.weekEarnings}</div>
-              </div>
-              <div className="dashboard-card">
-                <div className="card-top">
-                  <span className="card-label">This Month</span>
-                  <BarChart3 size={18} className="card-icon text-blue" />
-                </div>
-                <div className="card-value">₹{stats.monthEarnings}</div>
-              </div>
-              <div className="dashboard-card">
-                <div className="card-top">
-                  <span className="card-label">Total</span>
-                  <Package size={18} className="card-icon text-purple" />
-                </div>
-                <div className="card-value">₹{stats.totalEarningsBreakdown}</div>
+                <div className="card-value text-green">₹{stats.totalEarningsBreakdown?.toLocaleString()}</div>
+                <p style={{fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0'}}>Your total earnings</p>
               </div>
               <div className="dashboard-card" style={{border: '1px solid var(--ph-orange)'}}>
                 <div className="card-top">
-                  <span className="card-label">Cash in Hand (COD)</span>
+                  <span className="card-label">COD Cash Collected</span>
                   <IndianRupee size={18} className="card-icon text-orange" />
                 </div>
-                <div className="card-value text-orange">₹{Math.max(0, -netBalance).toLocaleString()}</div>
+                <div className="card-value text-orange">₹{stats.cashInHand?.toLocaleString()}</div>
+                <p style={{fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0'}}>Cash you hold for platform</p>
+              </div>
+              <div className="dashboard-card">
+                <div className="card-top">
+                  <span className="card-label">Already Settled</span>
+                  <CheckCircle2 size={18} className="card-icon text-blue" />
+                </div>
+                <div className="card-value text-blue">₹{Math.abs(stats.totalSettled || 0).toLocaleString()}</div>
+                <p style={{fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0'}}>Past settlements</p>
+              </div>
+              <div className="dashboard-card" style={{backgroundColor: netBalance < 0 ? '#FEF2F2' : netBalance > 0 ? '#F0FDF4' : '#F8FAFC', border: `1px solid ${netBalance < 0 ? '#EF4444' : netBalance > 0 ? '#22C55E' : '#E2E8F0'}`}}>
+                <div className="card-top">
+                  <span className="card-label" style={{color: netBalance < 0 ? '#B91C1C' : netBalance > 0 ? '#166534' : '#64748B'}}>Net Balance</span>
+                  <CircleDollarSign size={18} style={{color: netBalance < 0 ? '#EF4444' : netBalance > 0 ? '#22C55E' : '#94A3B8'}} />
+                </div>
+                <div className="card-value" style={{color: netBalance < 0 ? '#B91C1C' : netBalance > 0 ? '#166534' : '#1E293B'}}>
+                  {netBalance < 0 ? `-₹${Math.abs(netBalance).toLocaleString()}` : `₹${Math.max(0, netBalance).toLocaleString()}`}
+                </div>
+                <p style={{fontSize: '0.8rem', color: netBalance < 0 ? '#991B1B' : netBalance > 0 ? '#15803D' : '#64748B', margin: '4px 0 0 0', fontWeight: 'bold'}}>
+                  {netBalance < 0 ? 'You owe platform' : netBalance > 0 ? 'Platform owes you' : 'Fully settled'}
+                </p>
+              </div>
+            </div>
+
+            <div style={{display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '16px', backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px', marginBottom: '24px'}}>
+              <Info size={20} color="#3B82F6" style={{flexShrink: 0, marginTop: '2px'}} />
+              <div style={{fontSize: '0.9rem', color: '#1E40AF', lineHeight: '1.5'}}>
+                <strong>How settlement works:</strong> You earn <strong>Delivery Fees</strong> for every order. 
+                When you deliver <strong>COD orders</strong>, you collect cash on behalf of the platform. 
+                <br/>Your <strong>Net Balance</strong> = (Delivery Fees Earned) - (COD Cash Collected) - (Already Settled).
+                <br/>If the balance is negative, it means you have collected more cash than your earnings, and you need to deposit it to the platform.
               </div>
             </div>
 
@@ -1172,7 +1211,7 @@ export default function DriverDashboard() {
                           border: `1px solid ${deliveryPaymentMethod === 'COD' ? '#10B981' : '#cbd5e1'}`,
                           cursor: 'pointer', transition: 'all 0.2s'
                         }}
-                        onClick={() => setDeliveryPaymentMethod('COD')}
+                        onClick={() => { setDeliveryPaymentMethod('COD'); setCashCollected(false); }}
                       >
                         Cash
                       </button>
@@ -1200,13 +1239,41 @@ export default function DriverDashboard() {
                         <p style={{fontSize: '0.85rem', color: '#64748b', marginTop: '10px'}}>Ask customer to scan and pay ₹{currentModalOrder.total_amount}</p>
                       </div>
                     )}
+
+                    {/* Phase 3: Cash collection confirmation checkbox */}
+                    {deliveryPaymentMethod === 'COD' && (
+                      <label style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        marginTop: '12px', padding: '12px', borderRadius: '8px',
+                        backgroundColor: cashCollected ? '#F0FDF4' : '#FFF7ED',
+                        border: `1.5px solid ${cashCollected ? '#86EFAC' : '#FDBA74'}`,
+                        cursor: 'pointer', transition: 'all 0.2s',
+                        fontWeight: '500', fontSize: '0.9rem'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={cashCollected}
+                          onChange={(e) => setCashCollected(e.target.checked)}
+                          style={{ width: '18px', height: '18px', accentColor: '#10B981', cursor: 'pointer' }}
+                        />
+                        <span style={{ color: cashCollected ? '#15803D' : '#9A3412' }}>
+                          I have collected ₹{currentModalOrder.total_amount} from the customer
+                        </span>
+                      </label>
+                    )}
                   </div>
                 )}
 
                 <button 
                   className="verify-btn"
-                  style={{ backgroundColor: otpType === 'pickup' ? '#F59E0B' : '#10B981', marginTop: '20px' }}
+                  style={{ 
+                    backgroundColor: otpType === 'pickup' ? '#F59E0B' : '#10B981', 
+                    marginTop: '20px',
+                    opacity: (otpType === 'delivery' && currentModalOrder?.payment_method === 'COD' && deliveryPaymentMethod === 'COD' && !cashCollected) ? 0.5 : 1,
+                    cursor: (otpType === 'delivery' && currentModalOrder?.payment_method === 'COD' && deliveryPaymentMethod === 'COD' && !cashCollected) ? 'not-allowed' : 'pointer'
+                  }}
                   onClick={() => handleVerifyDelivery(deliveryPaymentMethod)}
+                  disabled={otpType === 'delivery' && currentModalOrder?.payment_method === 'COD' && deliveryPaymentMethod === 'COD' && !cashCollected}
                 >
                   {otpType === 'pickup' ? 'Verify & Pickup' : (deliveryPaymentMethod === 'UPI' ? 'Verify & Confirm UPI Payment' : 'Verify & Complete Delivery')}
                 </button>

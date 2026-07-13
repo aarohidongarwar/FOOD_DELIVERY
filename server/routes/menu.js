@@ -28,7 +28,7 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
 });
 
 // Add menu item (restaurant owner)
-router.post('/', authenticateToken, requireRole('restaurant', 'admin'), validateMenuItem, async (req, res) => {
+router.post('/', authenticateToken, requireRole('restaurant', 'admin', 'grocery'), validateMenuItem, async (req, res) => {
   try {
     const { restaurant_id, name, description, price, image_url, category, is_veg, is_bestseller } = req.body;
     
@@ -54,7 +54,7 @@ router.post('/', authenticateToken, requireRole('restaurant', 'admin'), validate
 });
 
 // Update menu item
-router.put('/:id', authenticateToken, requireRole('restaurant', 'admin'), validateMenuItem, async (req, res) => {
+router.put('/:id', authenticateToken, requireRole('restaurant', 'admin', 'grocery'), validateMenuItem, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       const isOwner = await checkMenuItemOwnership(req.params.id, req.user.id);
@@ -89,7 +89,7 @@ router.put('/:id', authenticateToken, requireRole('restaurant', 'admin'), valida
 });
 
 // Delete menu item
-router.delete('/:id', authenticateToken, requireRole('restaurant', 'admin'), async (req, res) => {
+router.delete('/:id', authenticateToken, requireRole('restaurant', 'admin', 'grocery'), async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       const isOwner = await checkMenuItemOwnership(req.params.id, req.user.id);

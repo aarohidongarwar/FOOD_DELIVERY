@@ -313,3 +313,53 @@
     position: static;
   }
 }
+
+@media (max-width: 640px) {
+  .tp-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .tp-header p {
+    font-size: 1rem;
+  }
+
+  .tp-stepper-card {
+    padding: 20px 16px;
+  }
+
+  .tp-driver-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .tp-details-card {
+    padding: 16px;
+  }
+
+  .tp-map-card {
+    height: 220px;
+  }
+
+  .tp-eta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tp-step {
+    gap: 14px;
+    padding-bottom: 24px;
+  }
+
+  .tp-step-label {
+    font-size: 0.938rem;
+  }
+
+  .tp-eta-time {
+    font-size: 1.25rem;
+  }
+}

@@ -9,7 +9,7 @@ import './RestaurantDetail.css';
 export default function RestaurantDetail({ onCartClick }) {
   const { id } = useParams();
   const { currentRestaurant, fetchRestaurant, loading } = useRestaurantStore();
-  const { items: cartItems, getTotal, restaurantId: cartRestaurantId } = useCartStore();
+  const { carts, getTotal } = useCartStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
   const [activeTab, setActiveTab] = useState('menu'); // 'menu' or 'reviews'
@@ -76,6 +76,9 @@ export default function RestaurantDetail({ onCartClick }) {
   }
 
   const categories = Object.keys(menu);
+  const cartType = currentRestaurant.is_grocery ? 'grocery' : 'food';
+  const cartItems = carts[cartType].items;
+  const cartRestaurantId = carts[cartType].restaurantId;
   const showCartBar = cartItems.length > 0 && cartRestaurantId === id;
 
   return (
@@ -170,6 +173,7 @@ export default function RestaurantDetail({ onCartClick }) {
                             item={item} 
                             restaurantId={id}
                             restaurantName={name}
+                            isGrocery={currentRestaurant.is_grocery}
                           />
                         ))}
                       </div>
@@ -260,7 +264,7 @@ export default function RestaurantDetail({ onCartClick }) {
           <div className="container rd-cart-bar-inner">
             <div className="rd-cart-summary">
               <span className="rd-cart-count">{cartItems.length} ITEM{cartItems.length > 1 ? 'S' : ''}</span>
-              <span className="rd-cart-total">₹{getTotal()}</span>
+              <span className="rd-cart-total">₹{getTotal(cartType)}</span>
             </div>
             <button className="btn btn-primary btn-sm" onClick={onCartClick}>
               View Cart <Bike size={16} />
